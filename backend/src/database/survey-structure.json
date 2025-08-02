@@ -1,0 +1,1099 @@
+{
+  "survey": {
+    "id": "ghac-donor-survey-v1",
+    "name": "GHAC Donor Survey",
+    "description": "Conversational survey to gather donor feedback and community input",
+    "sections": [
+      {
+        "id": "opening",
+        "name": "Opening",
+        "blocks": ["b1", "b2", "b3"]
+      },
+      {
+        "id": "connection-context",
+        "name": "Connection & Context",
+        "blocks": ["b4", "b4a", "b5"]
+      },
+      {
+        "id": "values-beliefs",
+        "name": "Values & Beliefs",
+        "blocks": ["b6", "b7"]
+      },
+      {
+        "id": "motivations-perceptions",
+        "name": "Motivations & Perceptions",
+        "blocks": ["b8", "b9"]
+      },
+      {
+        "id": "engagement-barriers",
+        "name": "Engagement & Barriers",
+        "blocks": ["b10", "b11"]
+      },
+      {
+        "id": "vision-identity",
+        "name": "Vision & Identity",
+        "blocks": ["b12", "b13", "b14"]
+      },
+      {
+        "id": "commitment-next-steps",
+        "name": "Commitment & Next Steps",
+        "blocks": ["b15", "b16", "b16a"]
+      },
+      {
+        "id": "closing-demographics",
+        "name": "Closing & Demographics",
+        "blocks": ["b17", "b18", "b19", "b19.2", "b20"]
+      }
+    ]
+  },
+  "blocks": {
+    "b1": {
+      "id": "b1",
+      "type": "video-autoplay",
+      "content": "Welcome video from Amanda Roy, CEO",
+      "videoUrl": "/videos/welcome-video.mp4",
+      "duration": "45-60 seconds",
+      "next": "b2"
+    },
+    "b2": {
+      "id": "b2",
+      "type": "quick-reply",
+      "content": "Hi! I'm here to learn how the arts touch your life and what matters most to you. This conversation helps shape how GHAC supports our creative community. Ready to share your thoughts? (It'll take about 8-10 minutes)",
+      "options": [
+        {
+          "id": "start",
+          "label": "🎨 Let's start",
+          "value": "start",
+          "next": "b3"
+        },
+        {
+          "id": "more-info",
+          "label": "🤔 Tell me more first",
+          "value": "more-info",
+          "next": "b2-info"
+        }
+      ]
+    },
+    "b2-info": {
+      "id": "b2-info",
+      "type": "message-button",
+      "content": "Great question! GHAC has been championing the arts in our region for over 50 years. We support individual artists, connect communities through creative experiences, and advocate for the arts as essential to our quality of life.\n\nYour input helps us understand what matters most to the people who care about arts and culture in Greater Hartford. There are no wrong answers—just your honest perspective!\n\nThis conversation is completely confidential, and you can skip any question you'd prefer not to answer.",
+      "buttonText": "Let's go!",
+      "next": "b3"
+    },
+    "b3": {
+      "id": "b3",
+      "type": "text-input",
+      "content": "What should I call you? (Or just hit enter to skip)",
+      "placeholder": "First name",
+      "variable": "user_name",
+      "required": false,
+      "next": "b4",
+      "onEmpty": {
+        "message": "No problem! Let's get started.",
+        "next": "b4"
+      }
+    },
+    "b4": {
+      "id": "b4",
+      "type": "single-choice",
+      "content": "{{#if user_name}}Thanks, {{user_name}}!{{else}}Thanks!{{/if}} What's your connection to Greater Hartford Arts Council?",
+      "variable": "connection_type",
+      "options": [
+        {
+          "id": "current-supporter",
+          "label": "I currently support GHAC",
+          "value": "current-supporter",
+          "next": "b4a",
+          "setVariables": {
+            "is_current_supporter": true,
+            "is_past_supporter": false,
+            "show_barriers": false,
+            "show_giving_level": true
+          }
+        },
+        {
+          "id": "past-supporter",
+          "label": "I've supported GHAC in the past",
+          "value": "past-supporter",
+          "next": "b4a",
+          "setVariables": {
+            "is_current_supporter": false,
+            "is_past_supporter": true,
+            "show_barriers": true,
+            "show_giving_level": true
+          }
+        },
+        {
+          "id": "workplace",
+          "label": "I participated through a workplace giving campaign",
+          "value": "workplace",
+          "next": "b4a",
+          "setVariables": {
+            "is_current_supporter": false,
+            "is_past_supporter": false,
+            "show_barriers": true,
+            "show_giving_level": false
+          }
+        },
+        {
+          "id": "connected-artist",
+          "label": "I'm connected through an artist or arts organization",
+          "value": "connected-artist",
+          "next": "b4a",
+          "setVariables": {
+            "is_current_supporter": false,
+            "is_past_supporter": false,
+            "show_barriers": true,
+            "show_giving_level": false
+          }
+        },
+        {
+          "id": "first-time",
+          "label": "This is my first time learning about GHAC",
+          "value": "first-time",
+          "next": "b4a",
+          "setVariables": {
+            "is_current_supporter": false,
+            "is_past_supporter": false,
+            "show_barriers": true,
+            "show_giving_level": false
+          }
+        },
+        {
+          "id": "other",
+          "label": "Other connection",
+          "value": "other",
+          "next": "b4a-other"
+        }
+      ]
+    },
+    "b4a": {
+      "id": "b4a",
+      "type": "dynamic-message",
+      "content": {
+        "current-supporter": "That's wonderful{{#if user_name}}, {{user_name}}{{/if}}! Thank you for being part of our community of supporters. Your investment helps ensure artists can thrive and everyone in our region can access transformative creative experiences.",
+        "past-supporter": "It's great to reconnect with you{{#if user_name}}, {{user_name}}{{/if}}! Whether it's been a while or just recently, we're grateful for the support you've shown. Arts organizations grow stronger when people like you believe in their mission.",
+        "workplace": "Ah yes, the workplace giving programs! Those collective contributions from employees like you create real impact. It's wonderful that your workplace values supporting the arts community.",
+        "connected-artist": "Those personal connections are so meaningful! Artists and arts organizations are the heart of what we do. It's through relationships like yours that our creative ecosystem stays vibrant and interconnected.",
+        "first-time": "Welcome{{#if user_name}}, {{user_name}}{{/if}}! I'm excited to introduce you to GHAC. We've been here since 1971, working behind the scenes to strengthen our region's creative community. This conversation is a perfect way to start exploring what we're all about.",
+        "default": "Thanks for sharing that connection!"
+      },
+      "next": "b5"
+    },
+    "b4a-other": {
+      "id": "b4a-other",
+      "type": "text-input-followup",
+      "content": "That's interesting! I'd love to hear more about your connection.",
+      "placeholder": "Tell me about your connection...",
+      "variable": "connection_other",
+      "next": "b5",
+      "setVariables": {
+        "is_current_supporter": false,
+        "is_past_supporter": false,
+        "show_barriers": true,
+        "show_giving_level": false
+      }
+    },
+    "b5": {
+      "id": "b5",
+      "type": "multi-choice",
+      "content": "How do you currently connect with the arts in our region? (Select all that apply)",
+      "variable": "arts_connections",
+      "options": [
+        {
+          "id": "attend",
+          "label": "I attend performances, exhibitions, or events",
+          "value": "attend"
+        },
+        {
+          "id": "visit",
+          "label": "I visit museums, galleries, or cultural sites",
+          "value": "visit"
+        },
+        {
+          "id": "friends-family",
+          "label": "I have friends or family who are artists",
+          "value": "friends-family"
+        },
+        {
+          "id": "community-wellbeing",
+          "label": "I see arts as vital to community wellbeing",
+          "value": "community-wellbeing"
+        },
+        {
+          "id": "donate",
+          "label": "I donate to arts organizations",
+          "value": "donate"
+        },
+        {
+          "id": "education",
+          "label": "I believe arts education is essential",
+          "value": "education"
+        },
+        {
+          "id": "creative-work",
+          "label": "My work involves creative thinking",
+          "value": "creative-work"
+        },
+        {
+          "id": "other",
+          "label": "Other connection",
+          "value": "other"
+        }
+      ],
+      "followUp": {
+        "1": "That's a meaningful way to stay connected to the arts!",
+        "2-3": "You have {{count}} great ways of engaging with the arts—that's wonderful!",
+        "4+": "Wow, {{count}} different connections! You're deeply woven into our creative community."
+      },
+      "next": "b6"
+    },
+    "b6": {
+      "id": "b6",
+      "type": "scale",
+      "content": "On a scale of 1-5, how essential do you believe arts and culture are to making Greater Hartford a thriving place to live and work?",
+      "variable": "arts_importance",
+      "min": 1,
+      "max": 5,
+      "options": [
+        {
+          "value": 1,
+          "label": "1️⃣",
+          "description": "Nice to have, but not essential"
+        },
+        {
+          "value": 2,
+          "label": "2️⃣",
+          "description": "Somewhat important"
+        },
+        {
+          "value": 3,
+          "label": "3️⃣",
+          "description": "Important for quality of life"
+        },
+        {
+          "value": 4,
+          "label": "4️⃣",
+          "description": "Very important to our community"
+        },
+        {
+          "value": 5,
+          "label": "5️⃣",
+          "description": "Absolutely essential—like schools or healthcare"
+        }
+      ],
+      "followUp": {
+        "1-2": "I appreciate your honesty! Everyone values different things.",
+        "3": "That balanced perspective makes sense.",
+        "4-5": "Your strong belief in the arts aligns with so many in our community!"
+      },
+      "next": "b7"
+    },
+    "b7": {
+      "id": "b7",
+      "type": "mixed-media",
+      "content": "We're about halfway through{{#if user_name}}, {{user_name}}{{/if}}! Here's something different: What's one way the arts have touched your life personally? It could be a memorable performance, a creative moment, or how the arts helped during a difficult time.",
+      "variable": "personal_story",
+      "options": [
+        {
+          "id": "video",
+          "label": "🎥 Record a video",
+          "value": "video",
+          "type": "videoask",
+          "maxDuration": 120
+        },
+        {
+          "id": "audio",
+          "label": "🎤 Record audio",
+          "value": "audio",
+          "type": "videoask",
+          "maxDuration": 120
+        },
+        {
+          "id": "text",
+          "label": "⌨️ Type my response",
+          "value": "text",
+          "type": "text-input"
+        },
+        {
+          "id": "skip",
+          "label": "🤐 I'd prefer to skip this",
+          "value": "skip"
+        }
+      ],
+      "followUp": {
+        "video": "Thank you for sharing that story on video—it really brings your experience to life!",
+        "audio": "Thanks for sharing your story! Hearing it in your own voice makes it so personal.",
+        "text": "What a powerful story. Thank you for taking the time to share that with me.",
+        "skip": "No problem at all! Let's keep going."
+      },
+      "next": "b8"
+    },
+    "b8": {
+      "id": "b8",
+      "type": "single-choice",
+      "content": {
+        "supporter": "Thinking about why you've chosen to support GHAC or other arts organizations, what drives your giving decisions most?",
+        "non-supporter": "If you were to support an arts organization, what would be most important to you?"
+      },
+      "contentCondition": {
+        "if": {
+          "or": [
+            { "variable": "is_current_supporter", "equals": true },
+            { "variable": "is_past_supporter", "equals": true }
+          ]
+        },
+        "then": "supporter",
+        "else": "non-supporter"
+      },
+      "variable": "primary_motivation",
+      "options": [
+        {
+          "id": "help-artists",
+          "label": "Knowing my support directly helps individual artists",
+          "value": "help-artists"
+        },
+        {
+          "id": "community-impact",
+          "label": "Seeing measurable community impact",
+          "value": "community-impact"
+        },
+        {
+          "id": "underserved-access",
+          "label": "Ensuring arts access for underserved communities",
+          "value": "underserved-access"
+        },
+        {
+          "id": "cultural-heritage",
+          "label": "Preserving our cultural heritage",
+          "value": "cultural-heritage"
+        },
+        {
+          "id": "creative-economy",
+          "label": "Strengthening our creative economy",
+          "value": "creative-economy"
+        },
+        {
+          "id": "youth-programs",
+          "label": "Investing in youth arts programs",
+          "value": "youth-programs"
+        },
+        {
+          "id": "other",
+          "label": "Something else drives my decisions",
+          "value": "other",
+          "followUpInput": true
+        }
+      ],
+      "next": "b9"
+    },
+    "b9": {
+      "id": "b9",
+      "type": "semantic-differential",
+      "content": "Where would you place GHAC on these spectrums? (Just click where feels right to you)",
+      "variable": "ghac_perception",
+      "scales": [
+        {
+          "id": "innovation",
+          "leftLabel": "Traditional",
+          "rightLabel": "Innovative",
+          "variable": "traditional_innovative"
+        },
+        {
+          "id": "focus",
+          "leftLabel": "Corporate",
+          "rightLabel": "Community-focused",
+          "variable": "corporate_community"
+        },
+        {
+          "id": "approach",
+          "leftLabel": "Transactional",
+          "rightLabel": "Relationship-based",
+          "variable": "transactional_relationship"
+        },
+        {
+          "id": "visibility",
+          "leftLabel": "Behind the scenes",
+          "rightLabel": "Visible catalyst",
+          "variable": "behind_visible"
+        },
+        {
+          "id": "accessibility",
+          "leftLabel": "Exclusive",
+          "rightLabel": "Inclusive",
+          "variable": "exclusive_inclusive"
+        }
+      ],
+      "followUp": "Thanks for that honest assessment! Your perception helps us understand how we're showing up in the community.",
+      "next": "b10"
+    },
+    "b10": {
+      "id": "b10",
+      "type": "single-choice",
+      "content": "If GHAC could offer you one thing, what type of relationship would feel most meaningful to you?",
+      "variable": "ideal_relationship",
+      "options": [
+        {
+          "id": "informed",
+          "label": "Keep me informed and inspired with stories of impact",
+          "value": "informed"
+        },
+        {
+          "id": "experiences",
+          "label": "Invite me to special experiences and behind-the-scenes moments",
+          "value": "experiences"
+        },
+        {
+          "id": "decisions",
+          "label": "Include me in important decisions about our arts future",
+          "value": "decisions"
+        },
+        {
+          "id": "connect",
+          "label": "Connect me with other people who care about the arts",
+          "value": "connect"
+        },
+        {
+          "id": "distance",
+          "label": "Let me support from a distance without much interaction",
+          "value": "distance"
+        },
+        {
+          "id": "skills",
+          "label": "Engage my professional skills to help artists thrive",
+          "value": "skills"
+        },
+        {
+          "id": "figuring",
+          "label": "I'm still figuring out what would work best for me",
+          "value": "figuring"
+        }
+      ],
+      "next": "b11"
+    },
+    "b11": {
+      "id": "b11",
+      "type": "multi-choice",
+      "content": "What makes it challenging to engage with arts organizations at the level you'd like? (Select all that apply)",
+      "variable": "engagement_barriers",
+      "showIf": {
+        "not": { "variable": "is_current_supporter", "equals": true }
+      },
+      "options": [
+        {
+          "id": "unclear-impact",
+          "label": "It's unclear how my support creates real change",
+          "value": "unclear-impact"
+        },
+        {
+          "id": "not-welcomed",
+          "label": "I don't always feel personally welcomed or valued",
+          "value": "not-welcomed"
+        },
+        {
+          "id": "financial",
+          "label": "Financial constraints",
+          "value": "financial"
+        },
+        {
+          "id": "time",
+          "label": "Time constraints",
+          "value": "time"
+        },
+        {
+          "id": "lack-info",
+          "label": "Lack of information about opportunities",
+          "value": "lack-info"
+        },
+        {
+          "id": "past-impersonal",
+          "label": "Past experiences that felt transactional or impersonal",
+          "value": "past-impersonal"
+        },
+        {
+          "id": "overwhelming",
+          "label": "Life feels overwhelming right now",
+          "value": "overwhelming"
+        },
+        {
+          "id": "other-causes",
+          "label": "Other causes take priority",
+          "value": "other-causes"
+        },
+        {
+          "id": "nothing",
+          "label": "Nothing—I'm satisfied with my current level of engagement",
+          "value": "nothing",
+          "exclusive": true
+        }
+      ],
+      "followUp": {
+        "nothing": "That's wonderful to hear! It sounds like you've found a good balance.",
+        "default": "Thank you for that honest feedback. Understanding these challenges helps us create better ways to connect."
+      },
+      "next": "b12"
+    },
+    "b12": {
+      "id": "b12",
+      "type": "mixed-media",
+      "content": "Here's a big question: If you could wave a magic wand and transform one thing about how arts organizations build relationships with their communities, what would it be?",
+      "variable": "future_vision",
+      "options": [
+        {
+          "id": "video",
+          "label": "🎥 Record a video",
+          "value": "video",
+          "type": "videoask",
+          "maxDuration": 120
+        },
+        {
+          "id": "audio",
+          "label": "🎤 Record audio",
+          "value": "audio",
+          "type": "videoask",
+          "maxDuration": 120
+        },
+        {
+          "id": "text",
+          "label": "⌨️ Type my response",
+          "value": "text",
+          "type": "text-input"
+        }
+      ],
+      "followUp": {
+        "video": "What a thoughtful vision—thank you for sharing that!",
+        "audio": "I love hearing your ideas for transformation. Thank you!",
+        "text": "That's such an insightful perspective. These ideas really matter."
+      },
+      "next": "b13"
+    },
+    "b13": {
+      "id": "b13",
+      "type": "multi-choice",
+      "content": "Which of these resonate with your personal relationship to creativity? (Select all that apply)",
+      "variable": "creative_identity",
+      "options": [
+        {
+          "id": "pursue-hobbies",
+          "label": "I pursue creative hobbies in my free time",
+          "value": "pursue-hobbies"
+        },
+        {
+          "id": "wish-outlets",
+          "label": "I wish I had more creative outlets in my life",
+          "value": "wish-outlets"
+        },
+        {
+          "id": "creative-work",
+          "label": "Creative problem-solving is part of my work",
+          "value": "creative-work"
+        },
+        {
+          "id": "passionate-forms",
+          "label": "I'm passionate about specific art forms",
+          "value": "passionate-forms"
+        },
+        {
+          "id": "civic-responsibility",
+          "label": "I see supporting artists as part of civic responsibility",
+          "value": "civic-responsibility"
+        },
+        {
+          "id": "innovation",
+          "label": "Innovation and experimentation excite me",
+          "value": "innovation"
+        },
+        {
+          "id": "traditional",
+          "label": "I believe traditional arts deserve preservation",
+          "value": "traditional"
+        }
+      ],
+      "next": "b14"
+    },
+    "b14": {
+      "id": "b14",
+      "type": "ranking",
+      "content": "As we look ahead, what would you most like to see strengthen in Greater Hartford's arts ecosystem? (Drag to rank your top 3)",
+      "variable": "top_priorities",
+      "maxSelections": 3,
+      "options": [
+        {
+          "id": "emerging-artists",
+          "label": "More opportunities for emerging artists",
+          "value": "emerging-artists"
+        },
+        {
+          "id": "youth-education",
+          "label": "Arts education for young people",
+          "value": "youth-education"
+        },
+        {
+          "id": "public-art",
+          "label": "Public art that reflects our community's diversity",
+          "value": "public-art"
+        },
+        {
+          "id": "sustainable-funding",
+          "label": "Sustainable funding for arts organizations",
+          "value": "sustainable-funding"
+        },
+        {
+          "id": "creative-spaces",
+          "label": "Creative spaces for artists to work and gather",
+          "value": "creative-spaces"
+        },
+        {
+          "id": "economic-development",
+          "label": "Arts as economic development driver",
+          "value": "economic-development"
+        },
+        {
+          "id": "wellness-healing",
+          "label": "Connections between arts and wellness/healing",
+          "value": "wellness-healing"
+        }
+      ],
+      "followUp": "Those priorities really paint a picture of the creative community you envision!",
+      "next": "b15"
+    },
+    "b15": {
+      "id": "b15",
+      "type": "multi-choice",
+      "content": "We're almost done{{#if user_name}}, {{user_name}}{{/if}}! Looking ahead, what specific opportunities might interest you in the next year? (Select any that appeal to you)",
+      "variable": "interests",
+      "options": [
+        {
+          "id": "artist-stories",
+          "label": "Learning about artists and their stories",
+          "value": "artist-stories"
+        },
+        {
+          "id": "studio-visits",
+          "label": "Behind-the-scenes studio visits",
+          "value": "studio-visits"
+        },
+        {
+          "id": "donor-gatherings",
+          "label": "Small donor gatherings and salons",
+          "value": "donor-gatherings"
+        },
+        {
+          "id": "share-expertise",
+          "label": "Sharing my professional expertise",
+          "value": "share-expertise"
+        },
+        {
+          "id": "advisory",
+          "label": "Advisory committee participation",
+          "value": "advisory"
+        },
+        {
+          "id": "regular-giving",
+          "label": "Setting up monthly or quarterly giving",
+          "value": "regular-giving"
+        },
+        {
+          "id": "host-event",
+          "label": "Hosting a friend-raising event",
+          "value": "host-event"
+        },
+        {
+          "id": "learn-more",
+          "label": "I need to learn more first",
+          "value": "learn-more"
+        }
+      ],
+      "next": "b16"
+    },
+    "b16": {
+      "id": "b16",
+      "type": "single-choice",
+      "content": "How would you prefer to hear from us about opportunities that match your interests?",
+      "variable": "communication_pref",
+      "options": [
+        {
+          "id": "email",
+          "label": "Email updates with stories and impact",
+          "value": "email",
+          "next": "b16a-email"
+        },
+        {
+          "id": "text",
+          "label": "Text messages about events and opportunities",
+          "value": "text",
+          "next": "b16a-text"
+        },
+        {
+          "id": "conversations",
+          "label": "Future conversations like this one",
+          "value": "conversations",
+          "next": "b17"
+        },
+        {
+          "id": "newsletter",
+          "label": "Printed newsletter (quarterly)",
+          "value": "newsletter",
+          "next": "b16a-newsletter"
+        },
+        {
+          "id": "social",
+          "label": "Social media updates",
+          "value": "social",
+          "next": "b17"
+        },
+        {
+          "id": "no-updates",
+          "label": "I'd prefer not to receive updates",
+          "value": "no-updates",
+          "next": "b17"
+        },
+        {
+          "id": "mix",
+          "label": "A mix of these",
+          "value": "mix",
+          "next": "b16a-mix"
+        }
+      ]
+    },
+    "b16a-email": {
+      "id": "b16a-email",
+      "type": "contact-form",
+      "content": "Great! Let me get your email address so we can stay connected.",
+      "fields": [
+        {
+          "id": "firstname",
+          "label": "First Name",
+          "type": "text",
+          "variable": "user_firstname",
+          "required": true,
+          "prefill": "user_name"
+        },
+        {
+          "id": "lastname",
+          "label": "Last Name",
+          "type": "text",
+          "variable": "user_lastname",
+          "required": true
+        },
+        {
+          "id": "email",
+          "label": "Email",
+          "type": "email",
+          "variable": "user_email",
+          "required": true
+        },
+        {
+          "id": "mobile",
+          "label": "Mobile (optional)",
+          "type": "tel",
+          "variable": "user_mobile",
+          "required": false
+        }
+      ],
+      "next": "b17"
+    },
+    "b16a-text": {
+      "id": "b16a-text",
+      "type": "contact-form",
+      "content": "Perfect! I'll need your mobile number for text updates.",
+      "fields": [
+        {
+          "id": "firstname",
+          "label": "First Name",
+          "type": "text",
+          "variable": "user_firstname",
+          "required": true,
+          "prefill": "user_name"
+        },
+        {
+          "id": "lastname",
+          "label": "Last Name",
+          "type": "text",
+          "variable": "user_lastname",
+          "required": true
+        },
+        {
+          "id": "mobile",
+          "label": "Mobile",
+          "type": "tel",
+          "variable": "user_mobile",
+          "required": true
+        },
+        {
+          "id": "email",
+          "label": "Email",
+          "type": "email",
+          "variable": "user_email",
+          "required": true
+        }
+      ],
+      "next": "b17"
+    },
+    "b16a-newsletter": {
+      "id": "b16a-newsletter",
+      "type": "contact-form",
+      "content": "Wonderful! I'll need your mailing address for the printed newsletter.",
+      "fields": [
+        {
+          "id": "firstname",
+          "label": "First Name",
+          "type": "text",
+          "variable": "user_firstname",
+          "required": true,
+          "prefill": "user_name"
+        },
+        {
+          "id": "lastname",
+          "label": "Last Name",
+          "type": "text",
+          "variable": "user_lastname",
+          "required": true
+        },
+        {
+          "id": "email",
+          "label": "Email",
+          "type": "email",
+          "variable": "user_email",
+          "required": true
+        },
+        {
+          "id": "address",
+          "label": "Full Mailing Address",
+          "type": "textarea",
+          "variable": "user_address",
+          "required": true
+        }
+      ],
+      "next": "b17"
+    },
+    "b16a-mix": {
+      "id": "b16a-mix",
+      "type": "contact-form",
+      "content": "A mix sounds great! Let me get your contact information.",
+      "fields": [
+        {
+          "id": "firstname",
+          "label": "First Name",
+          "type": "text",
+          "variable": "user_firstname",
+          "required": true,
+          "prefill": "user_name"
+        },
+        {
+          "id": "lastname",
+          "label": "Last Name",
+          "type": "text",
+          "variable": "user_lastname",
+          "required": true
+        },
+        {
+          "id": "email",
+          "label": "Email",
+          "type": "email",
+          "variable": "user_email",
+          "required": true
+        },
+        {
+          "id": "mobile",
+          "label": "Mobile (optional)",
+          "type": "tel",
+          "variable": "user_mobile",
+          "required": false
+        }
+      ],
+      "next": "b17"
+    },
+    "b17": {
+      "id": "b17",
+      "type": "scale",
+      "content": "How valuable was this conversation for you?",
+      "variable": "conversation_value",
+      "min": 1,
+      "max": 5,
+      "options": [
+        {
+          "value": 1,
+          "label": "1️⃣",
+          "description": "Not valuable"
+        },
+        {
+          "value": 2,
+          "label": "2️⃣",
+          "description": "Somewhat valuable"
+        },
+        {
+          "value": 3,
+          "label": "3️⃣",
+          "description": "Valuable"
+        },
+        {
+          "value": 4,
+          "label": "4️⃣",
+          "description": "Very valuable"
+        },
+        {
+          "value": 5,
+          "label": "5️⃣",
+          "description": "Extremely valuable—I'm glad we connected"
+        }
+      ],
+      "next": "b18"
+    },
+    "b18": {
+      "id": "b18",
+      "type": "yes-no",
+      "content": "One last thing—would you be willing to share a bit more about yourself? This helps us understand who makes up our creative community. (It's completely optional and confidential)",
+      "variable": "demographics_consent",
+      "options": [
+        {
+          "id": "yes",
+          "label": "Yes, I'll share",
+          "value": true,
+          "next": "b19"
+        },
+        {
+          "id": "no",
+          "label": "I'd prefer not to",
+          "value": false,
+          "next": "b20"
+        }
+      ]
+    },
+    "b19": {
+      "id": "b19",
+      "type": "demographics",
+      "showIf": {
+        "variable": "demographics_consent",
+        "equals": true
+      },
+      "questions": [
+        {
+          "id": "zip",
+          "type": "text-input",
+          "content": "What's your ZIP code?",
+          "variable": "user_zip",
+          "placeholder": "e.g., 06103",
+          "required": false
+        },
+        {
+          "id": "age",
+          "type": "single-choice",
+          "content": "Which age range do you fall into?",
+          "variable": "user_age",
+          "options": [
+            { "label": "18-24", "value": "18-24" },
+            { "label": "25-34", "value": "25-34" },
+            { "label": "35-44", "value": "35-44" },
+            { "label": "45-54", "value": "45-54" },
+            { "label": "55-64", "value": "55-64" },
+            { "label": "65-74", "value": "65-74" },
+            { "label": "75+", "value": "75+" },
+            { "label": "Prefer not to say", "value": "prefer-not-say" }
+          ]
+        },
+        {
+          "id": "giving-level",
+          "type": "single-choice",
+          "content": "If you're comfortable sharing, what has been your typical annual giving level to GHAC?",
+          "variable": "giving_level",
+          "showIf": {
+            "or": [
+              { "variable": "is_current_supporter", "equals": true },
+              { "variable": "is_past_supporter", "equals": true }
+            ]
+          },
+          "options": [
+            { "label": "Under $100", "value": "under-100" },
+            { "label": "$100-$249", "value": "100-249" },
+            { "label": "$250-$499", "value": "250-499" },
+            { "label": "$500-$999", "value": "500-999" },
+            { "label": "$1,000-$2,499", "value": "1000-2499" },
+            { "label": "$2,500-$4,999", "value": "2500-4999" },
+            { "label": "$5,000+", "value": "5000-plus" },
+            { "label": "Prefer not to say", "value": "prefer-not-say" }
+          ]
+        },
+        {
+          "id": "race-ethnicity",
+          "type": "multi-choice",
+          "content": "How would you describe your race/ethnicity? (Select all that apply)",
+          "variable": "race_ethnicity",
+          "options": [
+            { "label": "American Indian or Alaska Native", "value": "american-indian" },
+            { "label": "Asian", "value": "asian" },
+            { "label": "Black or African American", "value": "black" },
+            { "label": "Hispanic or Latino", "value": "hispanic" },
+            { "label": "Native Hawaiian or Pacific Islander", "value": "pacific-islander" },
+            { "label": "White", "value": "white" },
+            { "label": "Another race/ethnicity", "value": "other" },
+            { "label": "Prefer not to say", "value": "prefer-not-say" }
+          ]
+        },
+        {
+          "id": "gender",
+          "type": "single-choice",
+          "content": "How do you describe your gender identity?",
+          "variable": "gender_identity",
+          "options": [
+            { "label": "Woman", "value": "woman" },
+            { "label": "Man", "value": "man" },
+            { "label": "Non-binary", "value": "non-binary" },
+            { "label": "Another gender identity", "value": "other" },
+            { "label": "Prefer not to say", "value": "prefer-not-say" }
+          ]
+        }
+      ],
+      "next": "b19.2"
+    },
+    "b19.2": {
+      "id": "b19.2",
+      "type": "single-choice",
+      "content": "Thanks for sharing! May we reach out if we have opportunities that match your interests?",
+      "variable": "contact_permission",
+      "showIf": {
+        "variable": "demographics_consent",
+        "equals": true
+      },
+      "options": [
+        {
+          "id": "yes",
+          "label": "Yes, please keep me in the loop",
+          "value": "yes"
+        },
+        {
+          "id": "maybe",
+          "label": "Not right now, but maybe later",
+          "value": "maybe"
+        },
+        {
+          "id": "no",
+          "label": "No thank you",
+          "value": "no"
+        }
+      ],
+      "next": "b20"
+    },
+    "b20": {
+      "id": "b20",
+      "type": "final-message",
+      "content": "{{#if user_name}}{{user_name}}, thank{{else}}Thank{{/if}} you so much for sharing your thoughts! Your perspective helps shape how we support our creative community.\n\nEvery voice matters in building a vibrant arts ecosystem in Greater Hartford. I hope this was as meaningful for you as it was valuable for us.\n\nWant to explore what GHAC is up to right now?",
+      "options": [
+        {
+          "id": "explore",
+          "label": "Explore GHAC's current programs",
+          "value": "explore",
+          "action": "link",
+          "url": "https://www.greaterhartfordarts.org"
+        },
+        {
+          "id": "close",
+          "label": "Close for now",
+          "value": "close",
+          "action": "complete"
+        }
+      ]
+    }
+  }
+}

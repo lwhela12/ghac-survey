@@ -1,0 +1,72 @@
+export interface Question {
+  id: string;
+  type: QuestionType;
+  content: string;
+  options?: Option[];
+  placeholder?: string;
+  required?: boolean;
+  min?: number;
+  max?: number;
+  maxSelections?: number;
+  scales?: SemanticScale[];
+  fields?: FormField[];
+  videoUrl?: string;
+  duration?: string;
+  buttonText?: string;
+}
+
+export type QuestionType =
+  | 'video-autoplay'
+  | 'quick-reply'
+  | 'message-button'
+  | 'text-input'
+  | 'single-choice'
+  | 'multi-choice'
+  | 'scale'
+  | 'mixed-media'
+  | 'semantic-differential'
+  | 'ranking'
+  | 'yes-no'
+  | 'contact-form'
+  | 'demographics'
+  | 'final-message';
+
+export interface Option {
+  id: string;
+  label: string;
+  value: string;
+  description?: string;
+  next?: string;
+  action?: string;
+  url?: string;
+}
+
+export interface SemanticScale {
+  id: string;
+  leftLabel: string;
+  rightLabel: string;
+  variable: string;
+}
+
+export interface FormField {
+  id: string;
+  label: string;
+  type: string;
+  variable: string;
+  required: boolean;
+  placeholder?: string;
+  prefill?: string;
+}
+
+export interface SurveyState {
+  sessionId: string;
+  currentQuestion: Question | null;
+  progress: number;
+  variables: Record<string, any>;
+}
+
+export interface Answer {
+  questionId: string;
+  value: any;
+  timestamp: Date;
+}

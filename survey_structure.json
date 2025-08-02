@@ -1,0 +1,209 @@
+[
+  {
+    "block_id": 1,
+    "section": "Opening",
+    "question_content": "Video Welcome: Amanda Roy introduction (45-60 seconds)",
+    "response_type": "Video",
+    "options_details": "Hi! I'm Amanda Roy, CEO of the Greater Hartford Arts Council...",
+    "logic_branching": "Auto-play",
+    "variable_name": NaN
+  },
+  {
+    "block_id": 2,
+    "section": "Opening",
+    "question_content": "Amanda: Thanks for watching! As I mentioned, this conversation is all about understanding what matters to you when it comes to the arts in Greater Hartford...",
+    "response_type": "Quick Reply Buttons",
+    "options_details": "\u2022 \ud83c\udfa8 Let's start\n\u2022 \ud83e\udd14 Tell me more first",
+    "logic_branching": "If \"Tell me more first\" \u2192 Extended info \u2192 Let's go button",
+    "variable_name": NaN
+  },
+  {
+    "block_id": 3,
+    "section": "Opening",
+    "question_content": "Amanda: Before we begin, I'd love to know your first name so we can make this conversation more personal. What should I call you?",
+    "response_type": "Text Input",
+    "options_details": "First Name (Optional)",
+    "logic_branching": "If no name provided \u2192 \"No problem! Let's get started.\"",
+    "variable_name": "@user_name"
+  },
+  {
+    "block_id": 4,
+    "section": "Connection & Context",
+    "question_content": "Amanda: {Name}, I'd love to know\u2014what's your connection to Greater Hartford Arts Council?",
+    "response_type": "Multiple Choice - Single Select",
+    "options_details": "\u2022 I currently support GHAC\n\u2022 I've supported GHAC in the past\n\u2022 I participated through a workplace giving campaign\n\u2022 I'm connected through an artist or arts organization\n\u2022 This is my first time learning about GHAC\n\u2022 Other connection",
+    "logic_branching": "Branch responses based on selection (see below)",
+    "variable_name": "@connection_type"
+  },
+  {
+    "block_id": "4a",
+    "section": "Branch Responses",
+    "question_content": "Dynamic response based on connection type",
+    "response_type": "Message",
+    "options_details": "Currently support: \"That's wonderful, {Name}! Thank you...\"\nPast support: \"It's great to reconnect...\"\nWorkplace: \"Ah yes, the workplace giving programs!...\"\nFirst time: \"Welcome, {Name}!...\"\nOther: \"That's interesting! I'd love to hear more...\" [Text Input]",
+    "logic_branching": "Sets supporter status flags",
+    "variable_name": "@is_current_supporter\n@is_past_supporter\n@show_barriers\n@show_giving_level"
+  },
+  {
+    "block_id": 5,
+    "section": "Connection & Context",
+    "question_content": "Amanda: The arts ecosystem includes many different touchpoints. How do you currently connect with the arts in our region?",
+    "response_type": "Multiple Choice - Multi Select",
+    "options_details": "\u2022 I attend performances, exhibitions, or events\n\u2022 I visit museums, galleries, or cultural sites\n\u2022 I have friends or family who are artists\n\u2022 I see arts as vital to community wellbeing\n\u2022 I donate to arts organizations\n\u2022 I believe arts education is essential\n\u2022 My work involves creative thinking\n\u2022 Other connection",
+    "logic_branching": "Dynamic response based on number selected",
+    "variable_name": "@arts_connections"
+  },
+  {
+    "block_id": 6,
+    "section": "Values & Beliefs",
+    "question_content": "Amanda: When you think about the role of arts in Greater Hartford, how essential do you believe they are?",
+    "response_type": "Scale (1-5)",
+    "options_details": "1\ufe0f\u20e3 Nice to have, but not essential\n2\ufe0f\u20e3 Somewhat important\n3\ufe0f\u20e3 Important for quality of life\n4\ufe0f\u20e3 Very important to our community\n5\ufe0f\u20e3 Absolutely essential\u2014like schools or healthcare",
+    "logic_branching": "Dynamic response based on rating",
+    "variable_name": "@arts_importance"
+  },
+  {
+    "block_id": 7,
+    "section": "Values & Beliefs",
+    "question_content": "Amanda: You are doing amazing, {name}! Half way done already. Now, here's something I'm genuinely curious about\u2014what's one way the arts have touched your life personally?",
+    "response_type": "Mixed Response Options",
+    "options_details": "\u2022 \ud83c\udfa5 Record a video (2 min max)\n\u2022 \ud83c\udfa4 Record audio (2 min max)\n\u2022 \u2328\ufe0f Type my response\n\u2022 \ud83e\udd10 I'd prefer to skip this",
+    "logic_branching": "VideoAsk integration for video/audio options",
+    "variable_name": "@personal_story"
+  },
+  {
+    "block_id": 8,
+    "section": "Motivations & Perceptions",
+    "question_content": "Amanda: [Conditional text based on supporter status]\nCurrent/Past: \"Thinking about why you've chosen to support GHAC or other arts organizations, what drives your giving decisions most?\"\nNon-supporter: \"If you were to support an arts organization, what would be most important to you?\"",
+    "response_type": "Multiple Choice - Single Select",
+    "options_details": "\u2022 Knowing my support directly helps individual artists\n\u2022 Seeing measurable community impact\n\u2022 Ensuring arts access for underserved communities\n\u2022 Preserving our cultural heritage\n\u2022 Strengthening our creative economy\n\u2022 Investing in youth arts programs\n\u2022 Something else drives my decisions",
+    "logic_branching": "If \"Something else\" \u2192 Text input",
+    "variable_name": "@primary_motivation"
+  },
+  {
+    "block_id": 9,
+    "section": "Motivations & Perceptions",
+    "question_content": "Amanda: Based on what you know about GHAC\u2014even if it's limited\u2014I'm curious where you'd place us on these spectrums. Be honest!",
+    "response_type": "Semantic Differential Scales",
+    "options_details": "Traditional \u25cb\u25cb\u25cb\u25cb\u25cb Innovative\nCorporate \u25cb\u25cb\u25cb\u25cb\u25cb Community-focused\nTransactional \u25cb\u25cb\u25cb\u25cb\u25cb Relationship-based\nBehind the scenes \u25cb\u25cb\u25cb\u25cb\u25cb Visible catalyst\nExclusive \u25cb\u25cb\u25cb\u25cb\u25cb Inclusive",
+    "logic_branching": "5 sub-scales saved as object",
+    "variable_name": "@ghac_perception"
+  },
+  {
+    "block_id": 10,
+    "section": "Engagement & Barriers",
+    "question_content": "Amanda: Organizations can connect with supporters in many ways. What type of relationship would feel most meaningful to you?",
+    "response_type": "Multiple Choice - Single Select",
+    "options_details": "\u2022 Keep me informed and inspired\n\u2022 Invite me to special experiences\n\u2022 Include me in important decisions\n\u2022 Connect me with like-minded people\n\u2022 Let me support from a distance\n\u2022 Engage my professional skills\n\u2022 I'm still figuring that out",
+    "logic_branching": NaN,
+    "variable_name": "@ideal_relationship"
+  },
+  {
+    "block_id": 11,
+    "section": "Engagement & Barriers",
+    "question_content": "Amanda: What, if anything, makes it challenging to engage with arts organizations?",
+    "response_type": "Multiple Choice - Multi Select",
+    "options_details": "\u2022 Unclear how my support creates change\n\u2022 Don't feel personally welcomed\n\u2022 Financial constraints\n\u2022 Time constraints\n\u2022 Lack of information about opportunities\n\u2022 Past experiences felt impersonal\n\u2022 Life feels overwhelming right now\n\u2022 Other causes take priority\n\u2022 Nothing\u2014I'm satisfied with my current level",
+    "logic_branching": "CONDITIONAL: Show only if not current supporter OR past supporter\nSpecial response if \"Nothing\" selected",
+    "variable_name": "@engagement_barriers"
+  },
+  {
+    "block_id": 12,
+    "section": "Vision & Identity",
+    "question_content": "Amanda: Here's a thought experiment\u2014if you could transform one thing about how arts organizations in Greater Hartford operate or engage with the community, what would it be?",
+    "response_type": "Mixed Response Options",
+    "options_details": "\u2022 \ud83c\udfa5 Record a video (2 min max)\n\u2022 \ud83c\udfa4 Record audio (2 min max)\n\u2022 \u2328\ufe0f Type my response",
+    "logic_branching": "VideoAsk integration",
+    "variable_name": "@future_vision"
+  },
+  {
+    "block_id": 13,
+    "section": "Vision & Identity",
+    "question_content": "Amanda: Creativity shows up in many ways. Which of these resonate with your personal relationship to creativity?",
+    "response_type": "Multiple Choice - Multi Select",
+    "options_details": "\u2022 I pursue creative hobbies in my free time\n\u2022 I wish I had more creative outlets\n\u2022 Creative problem-solving is part of my work\n\u2022 I'm passionate about specific art forms\n\u2022 I see supporting artists as civic responsibility\n\u2022 Innovation and experimentation excite me\n\u2022 I believe traditional arts deserve preservation",
+    "logic_branching": NaN,
+    "variable_name": "@creative_identity"
+  },
+  {
+    "block_id": 14,
+    "section": "Vision & Identity",
+    "question_content": "Amanda: Looking ahead, what would you most like to see strengthen in Greater Hartford's arts ecosystem?",
+    "response_type": "Ranking (Drag & Drop)",
+    "options_details": "\u2022 More opportunities for emerging artists\n\u2022 Arts education for young people\n\u2022 Public art that reflects our diversity\n\u2022 Sustainable funding for arts organizations\n\u2022 Creative spaces for artists to work and gather\n\u2022 Arts as economic development driver\n\u2022 Connections between arts and wellness/healing",
+    "logic_branching": "Select top 3 priorities",
+    "variable_name": "@top_priorities"
+  },
+  {
+    "block_id": 15,
+    "section": "Commitment & Next Steps",
+    "question_content": "Amanda: Everyone contributes differently to our creative community. What specific opportunities might interest you in the next year?",
+    "response_type": "Multiple Choice - Multi Select",
+    "options_details": "\u2022 Learning about artists and their stories\n\u2022 Behind-the-scenes studio visits\n\u2022 Donor gatherings and salons\n\u2022 Sharing my professional expertise\n\u2022 Advisory committee participation\n\u2022 Monthly or quarterly giving\n\u2022 Hosting a friend-raising event\n\u2022 I need to learn more first",
+    "logic_branching": NaN,
+    "variable_name": "@interests"
+  },
+  {
+    "block_id": 16,
+    "section": "Commitment & Next Steps",
+    "question_content": "Amanda: If we were to share updates about our impact and opportunities, how would you prefer to hear from us?",
+    "response_type": "Multiple Choice - Single Select",
+    "options_details": "\u2022 Email updates with stories and impact\n\u2022 Text messages about events and opportunities\n\u2022 Future conversations like this one\n\u2022 Printed newsletter (quarterly)\n\u2022 Social media updates\n\u2022 I'd prefer not to receive updates\n\u2022 A mix of these",
+    "logic_branching": "Branch to appropriate contact form based on selection",
+    "variable_name": "@communication_pref"
+  },
+  {
+    "block_id": "16a",
+    "section": "Contact Forms",
+    "question_content": "Contact information collection based on communication preference",
+    "response_type": "Contact Form",
+    "options_details": "Email: First Name*, Last Name*, Email*, Mobile (optional)\nText: First Name*, Last Name*, Mobile*, Email*\nNewsletter: First Name*, Last Name*, Email*, Full Address*\nMix: First Name*, Last Name*, Email*, Mobile (optional)",
+    "logic_branching": "Only shows for relevant preferences",
+    "variable_name": "@user_firstname\n@user_lastname\n@user_email\n@user_mobile\n@user_address"
+  },
+  {
+    "block_id": 17,
+    "section": "Closing & Gratitude",
+    "question_content": "Amanda: One last question\u2014how valuable was this conversation for you?",
+    "response_type": "Scale (1-5)",
+    "options_details": "1\ufe0f\u20e3 Not valuable\n2\ufe0f\u20e3 Somewhat valuable\n3\ufe0f\u20e3 Valuable\n4\ufe0f\u20e3 Very valuable\n5\ufe0f\u20e3 Extremely valuable\u2014I'm glad we connected",
+    "logic_branching": NaN,
+    "variable_name": "@conversation_value"
+  },
+  {
+    "block_id": 18,
+    "section": "Closing & Gratitude",
+    "question_content": "Amanda: {Name}, thank you so much for sharing your thoughts! Would you be willing to share a bit more about yourself?",
+    "response_type": "Yes/No Buttons",
+    "options_details": "\u2022 Yes, I'll share\n\u2022 I'd prefer not to",
+    "logic_branching": "If \"Yes\" \u2192 Continue to demographics\nIf \"No\" \u2192 Skip to thank you",
+    "variable_name": "@demographics_consent"
+  },
+  {
+    "block_id": 19,
+    "section": "Demographics",
+    "question_content": "Demographics questions (OPTIONAL - only if consent given)",
+    "response_type": "Various",
+    "options_details": "ZIP code (Text)\nAge range (Multiple choice)\nGiving level (Multiple choice - conditional)\nRace/ethnicity (Multi-select)\nGender identity (Multiple choice)",
+    "logic_branching": "Giving level only shows if current/past supporter",
+    "variable_name": "@user_zip\n@user_age\n@giving_level\n@race_ethnicity\n@gender_identity"
+  },
+  {
+    "block_id": 19.2,
+    "section": "Demographics",
+    "question_content": "One last thing\u2014based on the interests you've shared today, may we reach out about relevant opportunities?",
+    "response_type": "Multiple Choice",
+    "options_details": "\u2022 Yes, please keep me in the loop\n\u2022 Not right now, but maybe later\n\u2022 No thank you",
+    "logic_branching": "Only shows after demographics",
+    "variable_name": "@contact_permission"
+  },
+  {
+    "block_id": 20,
+    "section": "Closing",
+    "question_content": "Amanda: {Name}, thank you so much for this conversation! Your insights help us reimagine what it means to be a catalyst for the arts in Greater Hartford...",
+    "response_type": "Final Message + Buttons",
+    "options_details": "\u2022 Explore GHAC's current programs\n\u2022 Close for now",
+    "logic_branching": "End of survey",
+    "variable_name": NaN
+  }
+]

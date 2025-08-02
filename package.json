@@ -1,0 +1,28 @@
+{
+  "name": "ghac-survey",
+  "version": "1.0.0",
+  "description": "GHAC Donor Survey Platform",
+  "scripts": {
+    "dev": "./scripts/start-docker.sh",
+    "dev:local": "./scripts/start-local.sh",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "stop": "docker-compose down && pkill -f 'npm run dev' || true",
+    "stop:soft": "pkill -f 'npm run dev' || true",
+    "restart": "npm run stop:soft && npm run dev",
+    "logs": "docker-compose logs -f",
+    "logs:backend": "docker-compose logs -f backend",
+    "logs:frontend": "docker-compose logs -f frontend",
+    "logs:db": "docker-compose logs -f postgres redis",
+    "setup": "npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend && npm install",
+    "setup:frontend": "cd frontend && npm install",
+    "migrate": "cd backend && npm run migrate",
+    "seed": "cd backend && npm run seed",
+    "reset": "docker-compose down -v && npm run dev",
+    "health": "curl http://localhost:4001/health && echo ' - Backend OK' && curl http://localhost:4000 && echo ' - Frontend OK'"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
