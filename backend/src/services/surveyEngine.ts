@@ -319,11 +319,41 @@ class SurveyEngine {
     const state = await this.getState(sessionId);
     if (!state) return 0;
 
-    // Approximate progress based on completed blocks
-    const totalBlocks = Object.keys(this.blocks).length;
-    const completedBlocks = state.completedBlocks.length;
+    // Define the main survey path (blocks that most users will see)
+    const mainPath = [
+      'b1', 'b2', 'b3', 'b4', 'b4a', 'b5', 'b6', 'b7', 'b8', 'b9',
+      'b10', 'b11', 'b12', 'b13', 'b14', 'b15', 'b16', 'b17', 'b18'
+    ];
     
-    return Math.round((completedBlocks / totalBlocks) * 100);
+    // Add conditional blocks based on user's path
+    let expectedBlocks = [...mainPath];
+    
+    // If user answered b16 with email/newsletter/text, they see b16a variant
+    if (state.answers.b16) {
+      const b16Answer = state.answers.b16;
+      if (b16Answer === 'email') expectedBlocks.push('b16a-email');
+      else if (b16Answer === 'newsletter') expectedBlocks.push('b16a-newsletter');
+      else if (b16Answer === 'text') expectedBlocks.push('b16a-text');
+      else if (b16Answer === 'mix') expectedBlocks.push('b16a-mix');
+    }
+    
+    // If user consented to demographics, they see b19
+    if (state.variables.demographics_consent === true) {
+      expectedBlocks.push('b19');
+    }
+    
+    // b20 is always the final block
+    expectedBlocks.push('b20');
+    
+    // Count how many expected blocks have been completed
+    const completedCount = expectedBlocks.filter(blockId => 
+      state.completedBlocks.includes(blockId)
+    ).length;
+    
+    const progress = Math.round((completedCount / expectedBlocks.length) * 100);
+    
+    // Ensure progress never exceeds 100% even if extra blocks were completed
+    return Math.min(progress, 100);
   }
 
   formatQuestionForClient(question: any, variables: Record<string, any>) {

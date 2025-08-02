@@ -8,6 +8,54 @@ interface DemographicsProps {
   disabled?: boolean;
 }
 
+interface MultiChoiceHandlerProps {
+  options: any[];
+  onSubmit: (selected: string[]) => void;
+  disabled?: boolean;
+}
+
+const MultiChoiceHandler: React.FC<MultiChoiceHandlerProps> = ({ options, onSubmit, disabled }) => {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const handleToggle = (value: string) => {
+    const newSelected = new Set(selected);
+    if (newSelected.has(value)) {
+      newSelected.delete(value);
+    } else {
+      newSelected.add(value);
+    }
+    setSelected(newSelected);
+  };
+
+  const handleSubmit = () => {
+    onSubmit(Array.from(selected));
+  };
+
+  return (
+    <>
+      <OptionsContainer>
+        {options.map((option) => (
+          <CheckboxOption
+            key={option.id || option.value}
+            onClick={() => handleToggle(option.value)}
+            $isSelected={selected.has(option.value)}
+            disabled={disabled}
+          >
+            <Checkbox $isSelected={selected.has(option.value)} />
+            <span>{option.label}</span>
+          </CheckboxOption>
+        ))}
+      </OptionsContainer>
+      <ContinueButton 
+        onClick={handleSubmit} 
+        disabled={disabled || selected.size === 0}
+      >
+        Continue ({selected.size} selected)
+      </ContinueButton>
+    </>
+  );
+};
+
 const Demographics: React.FC<DemographicsProps> = ({ question, onAnswer, disabled }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
@@ -84,7 +132,7 @@ const Demographics: React.FC<DemographicsProps> = ({ question, onAnswer, disable
         <OptionsContainer>
           {currentSubQuestion.options.map((option: any) => (
             <OptionButton
-              key={option.id}
+              key={option.id || option.value}
               onClick={() => handleSubAnswer(option.value)}
               disabled={disabled}
             >
@@ -92,6 +140,14 @@ const Demographics: React.FC<DemographicsProps> = ({ question, onAnswer, disable
             </OptionButton>
           ))}
         </OptionsContainer>
+      )}
+      
+      {currentSubQuestion.type === 'multi-choice' && currentSubQuestion.options && (
+        <MultiChoiceHandler
+          options={currentSubQuestion.options}
+          onSubmit={handleSubAnswer}
+          disabled={disabled}
+        />
       )}
       
       <SkipButton onClick={handleSkip} disabled={disabled}>
@@ -188,6 +244,80 @@ const SkipButton = styled.button`
   
   &:hover:not(:disabled) {
     color: ${({ theme }) => theme.colors.primary};
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const CheckboxOption = styled.button<{ $isSelected: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.md};
+  padding: ${({ theme }) => theme.spacing.md};
+  background-color: ${({ theme, $isSelected }) =>
+    $isSelected ? theme.colors.primary + '10' : theme.colors.surface};
+  border: 2px solid ${({ theme, $isSelected }) =>
+    $isSelected ? theme.colors.primary : theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  cursor: pointer;
+  text-align: left;
+  transition: all ${({ theme }) => theme.transitions.fast};
+  font-size: ${({ theme }) => theme.fontSizes.base};
+  width: 100%;
+  
+  &:hover:not(:disabled) {
+    border-color: ${({ theme }) => theme.colors.primary};
+    background-color: ${({ theme }) => theme.colors.primary}08;
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const Checkbox = styled.div<{ $isSelected: boolean }>`
+  width: 20px;
+  height: 20px;
+  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  border: 2px solid ${({ theme, $isSelected }) =>
+    $isSelected ? theme.colors.primary : theme.colors.border};
+  background-color: ${({ theme, $isSelected }) =>
+    $isSelected ? theme.colors.primary : 'transparent'};
+  position: relative;
+  flex-shrink: 0;
+  transition: all ${({ theme }) => theme.transitions.fast};
+  
+  &::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    opacity: ${({ $isSelected }) => ($isSelected ? 1 : 0)};
+  }
+`;
+
+const ContinueButton = styled.button`
+  background-color: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.text.inverse};
+  border: none;
+  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.xl};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  font-size: ${({ theme }) => theme.fontSizes.base};
+  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.fast};
+  align-self: flex-start;
+  
+  &:hover:not(:disabled) {
+    background-color: ${({ theme }) => theme.colors.primary}dd;
   }
   
   &:disabled {

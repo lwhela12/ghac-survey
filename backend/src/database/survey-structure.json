@@ -1085,7 +1085,7 @@
           "label": "Explore GHAC's current programs",
           "value": "explore",
           "action": "link",
-          "url": "https://www.greaterhartfordarts.org"
+          "url": "https://letsgoarts.org/our-events"
         },
         {
           "id": "close",
