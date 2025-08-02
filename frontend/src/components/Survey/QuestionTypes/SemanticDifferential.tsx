@@ -40,7 +40,7 @@ const SemanticDifferential: React.FC<SemanticDifferentialProps> = ({
               {[1, 2, 3, 4, 5].map((value) => (
                 <ScalePoint
                   key={value}
-                  isSelected={values[scale.variable] === value}
+                  $isSelected={values[scale.variable] === value}
                   onClick={() => handleScaleChange(scale.variable, value)}
                   disabled={disabled}
                 />
@@ -115,14 +115,14 @@ const ScalePoints = styled.div`
   }
 `;
 
-const ScalePoint = styled.button<{ isSelected: boolean }>`
+const ScalePoint = styled.button<{ $isSelected: boolean }>`
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid ${({ theme, isSelected }) =>
-    isSelected ? theme.colors.primary : theme.colors.border};
-  background-color: ${({ theme, isSelected }) =>
-    isSelected ? theme.colors.primary : theme.colors.background};
+  border: 2px solid ${({ theme, $isSelected }) =>
+    $isSelected ? theme.colors.primary : theme.colors.border};
+  background-color: ${({ theme, $isSelected }) =>
+    $isSelected ? theme.colors.primary : theme.colors.background};
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
   

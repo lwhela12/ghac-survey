@@ -1,3 +1,4 @@
+// frontend/src/styles/GlobalStyle.ts
 import { createGlobalStyle } from 'styled-components';
 
 export const GlobalStyle = createGlobalStyle`
@@ -22,9 +23,11 @@ export const GlobalStyle = createGlobalStyle`
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-weight: ${({ theme }) => theme.fontWeights.semibold};
+    font-family: ${({ theme }) => theme.fonts.display};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
     line-height: 1.2;
     margin-bottom: ${({ theme }) => theme.spacing.md};
+    letter-spacing: -0.02em;
   }
 
   p {
@@ -37,7 +40,7 @@ export const GlobalStyle = createGlobalStyle`
     transition: color ${({ theme }) => theme.transitions.fast};
 
     &:hover {
-      text-decoration: underline;
+      color: ${({ theme }) => theme.colors.accent.purple};
     }
   }
 
@@ -58,23 +61,24 @@ export const GlobalStyle = createGlobalStyle`
   }
 
   ::selection {
-    background-color: ${({ theme }) => theme.colors.primary};
+    background-color: ${({ theme }) => theme.colors.accent.purple};
     color: ${({ theme }) => theme.colors.text.inverse};
   }
 
   /* Scrollbar styling */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    background: ${({ theme }) => theme.colors.surface};
+    background: ${({ theme }) => theme.colors.background};
   }
 
   ::-webkit-scrollbar-thumb {
     background: ${({ theme }) => theme.colors.border};
     border-radius: ${({ theme }) => theme.borderRadius.full};
+    border: 2px solid ${({ theme }) => theme.colors.background};
 
     &:hover {
       background: ${({ theme }) => theme.colors.text.secondary};
@@ -83,8 +87,9 @@ export const GlobalStyle = createGlobalStyle`
 
   /* Focus styles for accessibility */
   *:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline: 3px solid ${({ theme }) => theme.colors.accent.purple};
     outline-offset: 2px;
+    border-radius: ${({ theme }) => theme.borderRadius.sm};
   }
 
   /* Animation keyframes */
@@ -111,18 +116,55 @@ export const GlobalStyle = createGlobalStyle`
   @keyframes pulse {
     0%, 100% {
       opacity: 1;
+      transform: scale(1);
     }
     50% {
-      opacity: 0.5;
+      opacity: 0.8;
+      transform: scale(0.95);
     }
   }
 
   @keyframes bounce {
     0%, 80%, 100% {
-      transform: scale(1);
+      transform: translateY(0);
     }
     40% {
-      transform: scale(1.1);
+      transform: translateY(-12px);
     }
+  }
+  
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+  
+  /* Utility classes */
+  .gradient-text {
+    background: ${({ theme }) => theme.colors.gradients.artistic};
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 `;

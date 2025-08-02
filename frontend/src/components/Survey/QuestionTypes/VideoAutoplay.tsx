@@ -9,6 +9,7 @@ interface VideoAutoplayProps {
 
 const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [showPlayButton, setShowPlayButton] = React.useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -16,6 +17,7 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete }) =
       video.play().catch(error => {
         console.error('Autoplay failed:', error);
         // If autoplay fails, show play button
+        setShowPlayButton(true);
       });
     }
   }, []);
@@ -23,6 +25,14 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete }) =
   const handleVideoEnd = () => {
     // Auto-advance after video ends
     setTimeout(() => onComplete('watched'), 1000);
+  };
+
+  const handlePlayClick = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.play();
+      setShowPlayButton(false);
+    }
   };
 
   return (
@@ -34,9 +44,13 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete }) =
           controls
           onEnded={handleVideoEnd}
           playsInline
-          muted // Muted to allow autoplay
           loop={false} // Prevent looping
         />
+        {showPlayButton && (
+          <PlayButtonOverlay onClick={handlePlayClick}>
+            <PlayButton>▶️</PlayButton>
+          </PlayButtonOverlay>
+        )}
       </VideoWrapper>
       <SkipButton onClick={() => onComplete('skipped')}>
         Skip Video →
@@ -48,24 +62,30 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete }) =
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: ${({ theme }) => theme.spacing.md};
+  width: 100%;
 `;
 
 const VideoWrapper = styled.div`
-  width: 100%;
-  max-width: 600px;
-  aspect-ratio: 16 / 9;
-  background-color: ${({ theme }) => theme.colors.surface};
+  position: relative;
+  width: 280px;
+  aspect-ratio: 9 / 16;
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   overflow: hidden;
-  box-shadow: ${({ theme }) => theme.shadows.lg};
+  margin-left: 48px; // Align with bot messages
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    margin-left: 0;
+    width: 200px;
+  }
 `;
 
 const Video = styled.video`
   width: 100%;
   height: 100%;
   object-fit: cover;
+  background: #000;
 `;
 
 const SkipButton = styled.button`
@@ -74,12 +94,48 @@ const SkipButton = styled.button`
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: ${({ theme }) => theme.fontSizes.sm};
   cursor: pointer;
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  transition: color ${({ theme }) => theme.transitions.fast};
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  margin-left: 48px; // Align with video
+  align-self: flex-start;
+  transition: all ${({ theme }) => theme.transitions.fast};
   
   &:hover {
     color: ${({ theme }) => theme.colors.primary};
     text-decoration: underline;
+  }
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    margin-left: 0;
+  }
+`;
+
+const PlayButtonOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+`;
+
+const PlayButton = styled.div`
+  width: 80px;
+  height: 80px;
+  background: ${({ theme }) => theme.colors.primary};
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  color: ${({ theme }) => theme.colors.text.inverse};
+  transition: transform ${({ theme }) => theme.transitions.fast};
+  
+  &:hover {
+    transform: scale(1.1);
   }
 `;
 
