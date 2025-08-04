@@ -13,6 +13,10 @@ export interface Question {
   videoUrl?: string;
   duration?: string;
   buttonText?: string;
+  persistVideo?: boolean;
+  links?: Array<{ text: string; url: string }>;
+  autoAdvance?: boolean;
+  autoAdvanceDelay?: number;
 }
 
 export type QuestionType =
@@ -36,6 +40,7 @@ export interface Option {
   label: string;
   value: string;
   description?: string;
+  emoji?: string;
   next?: string;
   action?: string;
   url?: string;

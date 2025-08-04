@@ -58,15 +58,7 @@ const surveySlice = createSlice({
   initialState,
   reducers: {
     initializeSurvey: (state) => {
-      // Only add welcome message if no messages exist
-      if (state.messages.length === 0) {
-        state.messages.push({
-          id: `bot-${Date.now()}`,
-          type: 'bot',
-          content: "Welcome to the Greater Hartford Arts Council survey! I'm here to learn about your connection to arts and culture in our community.",
-          timestamp: new Date().toISOString(),
-        });
-      }
+      // Remove default welcome message - we'll use b0 instead
     },
     addBotMessage: (state, action: PayloadAction<{ content: string; question?: Question }>) => {
       state.messages.push({
@@ -101,16 +93,14 @@ const surveySlice = createSlice({
         state.isLoading = false;
         state.sessionId = action.payload.sessionId;
         state.currentQuestion = action.payload.firstQuestion;
-        // Only add the first question as a bot message if it's not video-autoplay
-        if (action.payload.firstQuestion.type !== 'video-autoplay') {
-          state.messages.push({
-            id: `bot-${Date.now()}`,
-            type: 'bot',
-            content: action.payload.firstQuestion.content,
-            question: action.payload.firstQuestion,
-            timestamp: new Date().toISOString(),
-          });
-        }
+        // Always add the first question as a bot message
+        state.messages.push({
+          id: `bot-${Date.now()}`,
+          type: 'bot',
+          content: action.payload.firstQuestion.content,
+          question: action.payload.firstQuestion,
+          timestamp: new Date().toISOString(),
+        });
       })
       .addCase(startSurvey.rejected, (state, action) => {
         state.isLoading = false;

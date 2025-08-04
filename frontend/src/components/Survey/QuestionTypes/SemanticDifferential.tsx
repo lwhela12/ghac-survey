@@ -14,6 +14,7 @@ const SemanticDifferential: React.FC<SemanticDifferentialProps> = ({
   disabled 
 }) => {
   const [values, setValues] = useState<Record<string, number>>({});
+  
 
   const handleScaleChange = (scaleId: string, value: number) => {
     setValues(prev => ({

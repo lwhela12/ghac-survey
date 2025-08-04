@@ -23,8 +23,13 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete }) =
   }, []);
 
   const handleVideoEnd = () => {
-    // Auto-advance after video ends
-    setTimeout(() => onComplete('watched'), 1000);
+    // Only auto-advance if persistVideo is not set
+    if (!question.persistVideo) {
+      setTimeout(() => onComplete('watched'), 1000);
+    } else {
+      // If persistVideo is true, just mark as watched without auto-advancing
+      onComplete('watched');
+    }
   };
 
   const handlePlayClick = () => {

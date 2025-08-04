@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { login } from '../store/slices/adminSlice';
+import ghacLogo from '../../assets/images/GHAC.jpg';
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +27,8 @@ const AdminLogin: React.FC = () => {
     <Container>
       <LoginCard>
         <Logo>
-          <LogoText>GHAC Admin</LogoText>
+          <LogoImage src={ghacLogo} alt="GHAC" />
+          <LogoText>Admin Portal</LogoText>
         </Logo>
         
         <Form onSubmit={handleSubmit}>
@@ -85,10 +87,20 @@ const Logo = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing['2xl']};
 `;
 
+const LogoImage = styled.img`
+  width: 150px;
+  height: 75px;
+  object-fit: contain;
+  margin-bottom: ${({ theme }) => theme.spacing.md};
+  mix-blend-mode: multiply;
+`;
+
 const LogoText = styled.h1`
   color: ${({ theme }) => theme.colors.primary};
-  font-size: ${({ theme }) => theme.fontSizes['3xl']};
+  font-size: ${({ theme }) => theme.fontSizes['2xl']};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
+  font-family: 'Nunito', sans-serif;
+  margin: 0;
 `;
 
 const Form = styled.form`
@@ -104,6 +116,7 @@ const Label = styled.label`
   margin-bottom: ${({ theme }) => theme.spacing.sm};
   color: ${({ theme }) => theme.colors.text.primary};
   font-weight: ${({ theme }) => theme.fontWeights.medium};
+  font-family: 'Nunito', sans-serif;
 `;
 
 const Input = styled.input`
@@ -112,11 +125,12 @@ const Input = styled.input`
   border: 2px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: ${({ theme }) => theme.fontSizes.base};
+  font-family: 'Nunito', sans-serif;
   transition: border-color ${({ theme }) => theme.transitions.fast};
   
   &:focus {
     outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
+    border-color: #4A90E2;
   }
 `;
 
@@ -127,18 +141,20 @@ const ErrorMessage = styled.div`
 `;
 
 const SubmitButton = styled.button`
-  background-color: ${({ theme }) => theme.colors.primary};
-  color: ${({ theme }) => theme.colors.text.inverse};
+  background-color: #4A90E2;
+  color: white;
   border: none;
   padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.xl};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: ${({ theme }) => theme.fontSizes.base};
   font-weight: ${({ theme }) => theme.fontWeights.medium};
+  font-family: 'Nunito', sans-serif;
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
   
   &:hover:not(:disabled) {
-    background-color: ${({ theme }) => theme.colors.primary}dd;
+    background-color: #357ABD;
+    transform: translateY(-1px);
   }
   
   &:disabled {

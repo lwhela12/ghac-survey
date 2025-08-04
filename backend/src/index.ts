@@ -7,6 +7,7 @@ import { createServer } from 'http';
 import { errorHandler } from './middleware/errorHandler';
 import surveyRoutes from './routes/survey.routes';
 import adminRoutes from './routes/admin.routes';
+// import adminMockRoutes from './routes/admin-mock.routes';
 import { initializeDatabase } from './database/initialize';
 import { logger } from './utils/logger';
 
@@ -26,12 +27,26 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
 // Health check
 app.get('/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV 
+  });
+});
+
+// Debug endpoint
+app.get('/debug/db', (_req, res) => {
+  const { getDb } = require('./database/initialize');
+  const db = getDb();
+  res.json({ 
+    hasDb: !!db,
+    dbType: typeof db,
+    dbNull: db === null,
+    databaseUrl: process.env.DATABASE_URL || 'not set',
+    dbKeys: db ? Object.keys(db).slice(0, 5) : []
   });
 });
 

@@ -4,10 +4,11 @@ import styled, { keyframes } from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
   startSurvey, 
-  submitAnswer, 
+  submitAnswer,
   addBotMessage, 
   addUserMessage,
-  setTyping 
+  setTyping,
+  resetSurvey 
 } from '../../store/slices/surveySlice';
 import ChatMessage from './ChatMessage';
 import QuestionRenderer from './QuestionRenderer';
@@ -61,15 +62,31 @@ const ChatInterface: React.FC = () => {
   // Auto-advance for dynamic-message questions
   useEffect(() => {
     if (currentQuestion?.type === 'dynamic-message' && !isLoading) {
+      const delay = currentQuestion.autoAdvanceDelay || 1500;
       const timer = setTimeout(() => {
         handleAnswer('acknowledged');
-      }, 1500);
+      }, delay);
       return () => clearTimeout(timer);
     }
   }, [currentQuestion, isLoading]);
 
   const handleAnswer = async (answer: any) => {
     if (!currentQuestion || isLoading) return;
+
+    // Check if this is a special action (like close or complete)
+    if (answer && typeof answer === 'object' && answer.action) {
+      if (answer.action === 'close' || answer.action === 'complete') {
+        // Show thank you message
+        dispatch(addBotMessage({ content: "Thanks for your time! Starting fresh..." }));
+        
+        // Reset the survey after a short delay
+        setTimeout(() => {
+          dispatch(resetSurvey());
+        }, 2000);
+        
+        return;
+      }
+    }
 
     // Don't show user message for video-autoplay or dynamic-message questions
     if (currentQuestion.type !== 'video-autoplay' && currentQuestion.type !== 'dynamic-message') {
@@ -154,7 +171,9 @@ const ChatInterface: React.FC = () => {
           {isTyping && <TypingIndicator />}
           
           {/* Inline Question Area */}
-          {currentQuestion && !isLoading && !isTyping && currentQuestion.type !== 'dynamic-message' && (
+          {currentQuestion && !isLoading && !isTyping && 
+           currentQuestion.type !== 'dynamic-message' && 
+           !(currentQuestion.type === 'video-autoplay' && currentQuestion.persistVideo) && (
             <QuestionArea>
               {(currentQuestion.type === 'video-autoplay' || 
                 currentQuestion.type === 'single-choice' ||

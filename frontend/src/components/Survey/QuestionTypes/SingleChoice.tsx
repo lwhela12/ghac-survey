@@ -25,14 +25,27 @@ const SingleChoice: React.FC<SingleChoiceProps> = ({ question, onAnswer, disable
   const [selected, setSelected] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const handleSelect = (value: string) => {
-    setSelected(value);
+  const handleSelect = (option: any) => {
+    setSelected(option.value);
     setIsAnimating(true);
     
-    // Auto-submit after a short delay for better UX
-    setTimeout(() => {
-      onAnswer(value);
-    }, 300);
+    // Check if this option has a special action
+    if (option.action === 'link' && option.url) {
+      // Open the link in a new tab
+      window.open(option.url, '_blank');
+      // Don't submit an answer for link actions
+      return;
+    } else if (option.action === 'close') {
+      // Submit the close action
+      setTimeout(() => {
+        onAnswer({ action: 'close' });
+      }, 300);
+    } else {
+      // Normal answer submission
+      setTimeout(() => {
+        onAnswer(option.value);
+      }, 300);
+    }
   };
 
   return (
@@ -41,7 +54,7 @@ const SingleChoice: React.FC<SingleChoiceProps> = ({ question, onAnswer, disable
         {question.options?.map((option, index) => (
           <OptionCard
             key={option.id}
-            onClick={() => handleSelect(option.value)}
+            onClick={() => handleSelect(option)}
             $isSelected={selected === option.value}
             $isAnimating={isAnimating && selected === option.value}
             disabled={disabled || isAnimating}

@@ -15,6 +15,8 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  
   return config;
 });
 
@@ -22,20 +24,38 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401 && !error.config._retry) {
-      error.config._retry = true;
+    const originalRequest = error.config;
+    
+    // Don't retry refresh endpoint or login endpoint
+    if (originalRequest.url?.includes('/admin/refresh') || 
+        originalRequest.url?.includes('/admin/login')) {
+      return Promise.reject(error);
+    }
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
       try {
         const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token');
+        }
+        
         const response = await api.post('/api/admin/refresh', { refreshToken });
         localStorage.setItem('accessToken', response.data.accessToken);
-        error.config.headers.Authorization = `Bearer ${response.data.accessToken}`;
-        return api(error.config);
+        originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
+        return api(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/admin/login';
+        // Only redirect if we're not already on the login page
+        if (!window.location.pathname.includes('/admin/login')) {
+          window.location.href = '/admin/login';
+        }
+        return Promise.reject(refreshError);
       }
     }
+    
     return Promise.reject(error);
   }
 );
@@ -55,6 +75,8 @@ export const surveyApi = {
 
   submitAnswer: async (questionId: string, answer: any) => {
     if (!currentSessionId) throw new Error('No active session');
+    
+    
     const response = await api.post('/api/survey/answer', {
       sessionId: currentSessionId,
       questionId,

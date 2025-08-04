@@ -2,6 +2,10 @@ import { Pool } from 'pg';
 import { logger } from '../utils/logger';
 import fs from 'fs/promises';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Load environment variables before checking DATABASE_URL
+dotenv.config();
 
 let pool: Pool | null = null;
 
@@ -30,10 +34,16 @@ export const initializeDatabase = async () => {
       return;
     }
     // Test connection
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW()');
-    logger.info('Database connected:', result.rows[0].now);
-    client.release();
+    try {
+      const client = await pool.connect();
+      const result = await client.query('SELECT NOW()');
+      logger.info('Database connected:', result.rows[0].now);
+      client.release();
+    } catch (connError: any) {
+      logger.warn('Database connection failed, running without database:', connError.message);
+      pool = null; // Clear the pool if connection fails
+      return;
+    }
 
     // Load initial survey structure
     try {

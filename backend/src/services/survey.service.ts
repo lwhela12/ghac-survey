@@ -61,6 +61,16 @@ class SurveyService {
   async saveAnswer(data: SaveAnswerData) {
     const db = getDb();
     
+    // Debug logging for semantic differential
+    if (data.questionId === 'b9') {
+      logger.info('Saving b9 semantic differential answer:', {
+        questionId: data.questionId,
+        answer: data.answer,
+        answerType: typeof data.answer,
+        answerKeys: data.answer && typeof data.answer === 'object' ? Object.keys(data.answer) : []
+      });
+    }
+    
     try {
       if (!db) {
         throw new Error('Database not available');
@@ -81,19 +91,29 @@ class SurveyService {
         } else if (data.answer.text) {
           answerText = data.answer.text;
         } else {
-          // For complex answers (scales, etc)
-          metadata = data.answer;
+          // For complex answers (scales, semantic differential, etc)
+          // Store the answer data in metadata
+          metadata = { ...data.answer };
         }
       } else if (typeof data.answer === 'number') {
         answerText = data.answer.toString();
       }
 
-      // For now, store block ID in metadata since question_id expects UUID
-      // In production, you'd either change schema or create question records
+      // Always include block ID in metadata
       const metadataWithBlockId = {
         ...metadata,
         blockId: data.questionId
       };
+      
+      // Debug logging for semantic differential after processing
+      if (data.questionId === 'b9') {
+        logger.info('b9 processed data:', {
+          answerText,
+          answerChoiceIds,
+          metadata,
+          metadataWithBlockId
+        });
+      }
       
       // Use a deterministic UUID based on survey and block ID
       // This ensures the same block always gets the same UUID

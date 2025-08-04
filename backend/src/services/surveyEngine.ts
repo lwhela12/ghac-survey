@@ -157,6 +157,7 @@ class SurveyEngine {
       case 'b5': // Arts connections
         state.variables.arts_connections = answer;
         state.variables.arts_connections_count = answer.length;
+        state.variables.arts_connections_contains_other = answer.includes('other');
         break;
       case 'b6': // Arts importance
         state.variables.arts_importance = answer;
@@ -175,7 +176,7 @@ class SurveyEngine {
   }
 
   async getFirstQuestion(_surveyId: string) {
-    return this.blocks.b1;
+    return this.blocks.b0;
   }
 
   async getCurrentQuestion(sessionId: string) {
@@ -265,6 +266,16 @@ class SurveyEngine {
       }
     }
 
+    // Handle conditionalNext in current block
+    if (!nextBlockId && 'conditionalNext' in currentBlock) {
+      const conditionalNext = currentBlock.conditionalNext as any;
+      if (this.evaluateCondition(conditionalNext.if, state.variables)) {
+        nextBlockId = conditionalNext.then;
+      } else {
+        nextBlockId = conditionalNext.else;
+      }
+    }
+
     // Handle conditional display
     if (nextBlockId) {
       const nextBlock = this.blocks[nextBlockId as keyof typeof this.blocks];
@@ -284,6 +295,15 @@ class SurveyEngine {
       state.currentBlockId = nextBlockId;
       await this.saveState(sessionId, state);
       const nextBlock = this.blocks[nextBlockId as keyof typeof this.blocks];
+      
+      // Check if this is an empty content routing block, auto-advance if so
+      if (nextBlock && nextBlock.type === 'dynamic-message' && 
+          (!nextBlock.content || nextBlock.content === '') && 
+          'conditionalNext' in nextBlock) {
+        logger.debug(`Auto-advancing through empty routing block: ${nextBlockId}`);
+        return this.getNextQuestion(sessionId, nextBlockId, 'acknowledged');
+      }
+      
       logger.debug(`Returning next block:`, nextBlock);
       return nextBlock;
     }
@@ -294,7 +314,19 @@ class SurveyEngine {
 
   private evaluateCondition(condition: any, variables: Record<string, any>): boolean {
     if ('variable' in condition && 'equals' in condition) {
+      // Handle array comparisons
+      if (Array.isArray(condition.equals) && Array.isArray(variables[condition.variable])) {
+        return JSON.stringify(condition.equals.sort()) === JSON.stringify(variables[condition.variable].sort());
+      }
       return variables[condition.variable] === condition.equals;
+    }
+
+    if ('variable' in condition && 'greaterThan' in condition) {
+      return variables[condition.variable] > condition.greaterThan;
+    }
+
+    if ('variable' in condition && 'lessThan' in condition) {
+      return variables[condition.variable] < condition.lessThan;
     }
 
     if ('not' in condition) {
@@ -419,6 +451,26 @@ class SurveyEngine {
       }
       
       formatted.content = replaceVariables(selectedContent);
+    }
+    
+    // Handle conditionalContent array (for multiple conditions)
+    if (formatted.conditionalContent && Array.isArray(formatted.conditionalContent)) {
+      let matchedContent = null;
+      
+      for (const item of formatted.conditionalContent) {
+        if (item.condition === 'default') {
+          matchedContent = item.content;
+          break;
+        }
+        if (this.evaluateCondition(item.condition, variables)) {
+          matchedContent = item.content;
+          break;
+        }
+      }
+      
+      if (matchedContent && (formatted.content === 'placeholder' || formatted.content === '')) {
+        formatted.content = replaceVariables(matchedContent);
+      }
     }
     
     // Replace variables in options if they exist

@@ -19,7 +19,16 @@ export const submitAnswerSchema = Joi.object({
       text: Joi.string()
     }),
     Joi.number(),
-    Joi.object() // For complex answers like scales
+    // Semantic differential schema for b9 - must have all 5 properties
+    Joi.object({
+      traditional_innovative: Joi.number().min(1).max(5).required(),
+      corporate_community: Joi.number().min(1).max(5).required(),
+      transactional_relationship: Joi.number().min(1).max(5).required(),
+      behind_visible: Joi.number().min(1).max(5).required(),
+      exclusive_inclusive: Joi.number().min(1).max(5).required()
+    }).length(5), // Ensure exactly 5 properties
+    // For other complex answers - allow unknown properties
+    Joi.object().unknown(true)
   ).required()
 });
 

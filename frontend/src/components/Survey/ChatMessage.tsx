@@ -1,7 +1,9 @@
 // frontend/src/components/Survey/ChatMessage.tsx
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import amandaIcon from '../../../assets/images/Amanda_icon.png';
+import { useAppDispatch } from '../../hooks/redux';
+import { submitAnswer } from '../../store/slices/surveySlice';
 
 interface ChatMessageProps {
   message: {
@@ -9,10 +11,35 @@ interface ChatMessageProps {
     type: 'bot' | 'user' | 'system';
     content: string;
     timestamp: string;
+    question?: any; // Include the full question object
   };
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+  const dispatch = useAppDispatch();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoCompleted, setVideoCompleted] = React.useState(false);
+
+  useEffect(() => {
+    // Disabled autoplay for testing
+    // if (message.question?.type === 'video-autoplay' && videoRef.current && !videoCompleted) {
+    //   videoRef.current.play().catch(error => {
+    //     console.error('Autoplay failed:', error);
+    //   });
+    // }
+  }, [message.question, videoCompleted]);
+
+  const handleVideoEnd = () => {
+    if (!videoCompleted && message.question) {
+      setVideoCompleted(true);
+      // Submit the answer to advance to next question
+      dispatch(submitAnswer({ 
+        questionId: message.question.id, 
+        answer: 'watched' 
+      }));
+    }
+  };
+
   const formatTime = (date: string) => {
     const d = new Date(date);
     const hours = d.getHours();
@@ -23,14 +50,77 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     return `${displayHours}:${displayMinutes} ${ampm}`;
   };
 
+  const handleSkipVideo = () => {
+    if (!videoCompleted && message.question) {
+      setVideoCompleted(true);
+      // Submit the answer to advance to next question
+      dispatch(submitAnswer({ 
+        questionId: message.question.id, 
+        answer: 'skipped' 
+      }));
+    }
+  };
+
+  const renderContent = () => {
+    // Check if this is a video message
+    if (message.question?.type === 'video-autoplay' && message.question?.videoUrl) {
+      return (
+        <>
+          <VideoContainer>
+            <Video
+              ref={videoRef}
+              src={message.question.videoUrl}
+              controls
+              playsInline
+              loop={false}
+              onEnded={handleVideoEnd}
+            />
+          </VideoContainer>
+          {!videoCompleted && (
+            <SkipButton onClick={handleSkipVideo}>
+              Skip Video →
+            </SkipButton>
+          )}
+        </>
+      );
+    }
+    
+    // Check if the message has links from the question object
+    if (message.question?.links && message.question.links.length > 0) {
+      let content = message.content;
+      
+      // Replace each link text with an actual link
+      message.question.links.forEach((link: { text: string; url: string }) => {
+        const linkHtml = `<a href="${link.url}" target="_blank" rel="noopener noreferrer" style="color: #0055A5; text-decoration: underline;">${link.text}</a>`;
+        content = content.replace(link.text, linkHtml);
+      });
+      
+      return <Content dangerouslySetInnerHTML={{ __html: content }} />;
+    }
+    
+    return <Content>{message.content}</Content>;
+  };
+
+  // Check if this is a video message
+  const isVideoMessage = message.question?.type === 'video-autoplay' && message.question?.videoUrl;
+
   return (
     <Container type={message.type}>
       {message.type === 'bot' && <BotAvatar />}
       <MessageWrapper type={message.type}>
-        <Bubble type={message.type}>
-          <Content>{message.content}</Content>
-        </Bubble>
-        <Timestamp type={message.type}>{formatTime(message.timestamp)}</Timestamp>
+        {isVideoMessage ? (
+          <>
+            {renderContent()}
+            <Timestamp type={message.type}>{formatTime(message.timestamp)}</Timestamp>
+          </>
+        ) : (
+          <>
+            <Bubble type={message.type}>
+              {renderContent()}
+            </Bubble>
+            <Timestamp type={message.type}>{formatTime(message.timestamp)}</Timestamp>
+          </>
+        )}
       </MessageWrapper>
     </Container>
   );
@@ -169,6 +259,47 @@ const Timestamp = styled.span<{ type: 'bot' | 'user' | 'system' }>`
   margin-left: ${({ type }) => type === 'bot' ? '12px' : '0'};
   margin-right: ${({ type }) => type === 'user' ? '12px' : '0'};
   opacity: 0.7;
+`;
+
+const VideoContainer = styled.div`
+  width: 280px;
+  aspect-ratio: 9 / 16;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform ${({ theme }) => theme.transitions.fast};
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  }
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 200px;
+  }
+`;
+
+const Video = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const SkipButton = styled.button`
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  cursor: pointer;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  margin-top: ${({ theme }) => theme.spacing.sm};
+  transition: all ${({ theme }) => theme.transitions.fast};
+  
+  &:hover {
+    color: ${({ theme }) => theme.colors.primary};
+    text-decoration: underline;
+  }
 `;
 
 export default ChatMessage;

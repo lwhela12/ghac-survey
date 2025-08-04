@@ -42,6 +42,7 @@ class SurveyController {
   async submitAnswer(req: Request, res: Response, next: NextFunction) {
     try {
       const { sessionId, questionId, answer } = req.body;
+      
 
       // Validate session exists
       const surveyState = await surveyEngine.getState(sessionId);
@@ -74,6 +75,12 @@ class SurveyController {
 
       // Calculate progress
       const progress = await surveyEngine.calculateProgress(sessionId);
+
+      // Check if the next question is the final message (b20)
+      // If so, mark the survey as complete
+      if (nextQuestion && nextQuestion.id === 'b20') {
+        await surveyService.completeResponse(surveyState.responseId);
+      }
 
       res.json({
         nextQuestion: nextQuestion ? 
