@@ -504,42 +504,27 @@
     },
     "b7": {
       "id": "b7",
-      "type": "mixed-media",
-      "content": "We're about halfway through{{#if user_name}}, {{user_name}}{{/if}}! Here's something different: What's one way the arts have touched your life personally? It could be a memorable performance, a creative moment, or how the arts helped during a difficult time.",
+      "type": "videoask",
+      "content": "",
+      "videoAskFormId": "fcb71j5f2",
+      "videoDelay": 20,
       "variable": "personal_story",
-      "options": [
-        {
-          "id": "video",
-          "label": "🎥 Record a video",
-          "value": "video",
-          "type": "videoask",
-          "maxDuration": 120
-        },
-        {
-          "id": "audio",
-          "label": "🎤 Record audio",
-          "value": "audio",
-          "type": "videoask",
-          "maxDuration": 120
-        },
-        {
-          "id": "text",
-          "label": "⌨️ Type my response",
-          "value": "text",
-          "type": "text-input"
-        },
-        {
-          "id": "skip",
-          "label": "🤐 I'd prefer to skip this",
-          "value": "skip"
-        }
-      ],
-      "followUp": {
-        "video": "Thank you for sharing that story on video—it really brings your experience to life!",
-        "audio": "Thanks for sharing your story! Hearing it in your own voice makes it so personal.",
-        "text": "What a powerful story. Thank you for taking the time to share that with me.",
-        "skip": "No problem at all! Let's keep going."
+      "next": "b7-response"
+    },
+    "b7-response": {
+      "id": "b7-response",
+      "type": "dynamic-message",
+      "contentCondition": {
+        "if": { "variable": "personal_story_type", "equals": "skipped" },
+        "then": "skip",
+        "else": "responded"
       },
+      "content": {
+        "skip": "No problem at all! Let's keep going.",
+        "responded": "Thank you for sharing that—it really brings your experience to life!"
+      },
+      "autoAdvance": true,
+      "autoAdvanceDelay": 1000,
       "next": "b8"
     },
     "b8": {
@@ -748,36 +733,19 @@
     },
     "b12": {
       "id": "b12",
-      "type": "mixed-media",
-      "content": "Here's a big question: If you could wave a magic wand and transform one thing about how arts organizations build relationships with their communities, what would it be?",
+      "type": "videoask",
+      "content": "",
+      "videoAskFormId": "fdmk80eer",
+      "videoDelay": 20,
       "variable": "future_vision",
-      "options": [
-        {
-          "id": "video",
-          "label": "🎥 Record a video",
-          "value": "video",
-          "type": "videoask",
-          "maxDuration": 120
-        },
-        {
-          "id": "audio",
-          "label": "🎤 Record audio",
-          "value": "audio",
-          "type": "videoask",
-          "maxDuration": 120
-        },
-        {
-          "id": "text",
-          "label": "⌨️ Type my response",
-          "value": "text",
-          "type": "text-input"
-        }
-      ],
-      "followUp": {
-        "video": "What a thoughtful vision—thank you for sharing that!",
-        "audio": "I love hearing your ideas for transformation. Thank you!",
-        "text": "That's such an insightful perspective. These ideas really matter."
-      },
+      "next": "b12-response"
+    },
+    "b12-response": {
+      "id": "b12-response",
+      "type": "dynamic-message",
+      "content": "What a thoughtful vision—thank you for sharing that!",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 1000,
       "next": "b13"
     },
     "b13": {

@@ -7,6 +7,7 @@ import { createServer } from 'http';
 import { errorHandler } from './middleware/errorHandler';
 import surveyRoutes from './routes/survey.routes';
 import adminRoutes from './routes/admin.routes';
+import webhookRoutes from './routes/webhook.routes';
 // import adminMockRoutes from './routes/admin-mock.routes';
 import { initializeDatabase } from './database/initialize';
 import { logger } from './utils/logger';
@@ -53,6 +54,7 @@ app.get('/debug/db', (_req, res) => {
 // Routes
 app.use('/api/survey', surveyRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Error handling
 app.use(errorHandler);

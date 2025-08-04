@@ -94,11 +94,13 @@ const surveySlice = createSlice({
         state.sessionId = action.payload.sessionId;
         state.currentQuestion = action.payload.firstQuestion;
         // Always add the first question as a bot message
+        // Create a deep copy to avoid shared references
+        const questionCopy = JSON.parse(JSON.stringify(action.payload.firstQuestion));
         state.messages.push({
-          id: `bot-${Date.now()}`,
+          id: `bot-${Date.now()}-${action.payload.firstQuestion.id}`,
           type: 'bot',
-          content: action.payload.firstQuestion.content,
-          question: action.payload.firstQuestion,
+          content: questionCopy.content,
+          question: questionCopy,
           timestamp: new Date().toISOString(),
         });
       })
@@ -118,11 +120,23 @@ const surveySlice = createSlice({
         
         // Add next question as bot message if there is one
         if (action.payload.nextQuestion) {
+          // Debug logging for VideoAsk questions
+          if (action.payload.nextQuestion.type === 'videoask') {
+            console.log('Redux - Adding VideoAsk message:', {
+              questionId: action.payload.nextQuestion.id,
+              content: action.payload.nextQuestion.content,
+              videoAskFormId: action.payload.nextQuestion.videoAskFormId
+            });
+          }
+          
+          // Create a deep copy of the question to avoid shared references
+          const questionCopy = JSON.parse(JSON.stringify(action.payload.nextQuestion));
+          
           state.messages.push({
-            id: `bot-${Date.now()}`,
+            id: `bot-${Date.now()}-${action.payload.nextQuestion.id}`,
             type: 'bot',
-            content: action.payload.nextQuestion.content,
-            question: action.payload.nextQuestion,
+            content: questionCopy.content,
+            question: questionCopy,
             timestamp: new Date().toISOString(),
           });
         }

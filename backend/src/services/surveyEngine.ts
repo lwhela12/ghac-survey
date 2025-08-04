@@ -162,6 +162,15 @@ class SurveyEngine {
       case 'b6': // Arts importance
         state.variables.arts_importance = answer;
         break;
+      case 'b7': // VideoAsk personal story
+        if (typeof answer === 'object' && answer !== null) {
+          state.variables.personal_story_type = answer.type || 'skipped';
+          state.variables.personal_story_response_id = answer.responseId || null;
+          state.variables.personal_story_response_url = answer.responseUrl || null;
+        } else {
+          state.variables.personal_story_type = 'skipped';
+        }
+        break;
       case 'b18': // Demographics consent
         state.variables.demographics_consent = answer;
         break;
@@ -241,6 +250,10 @@ class SurveyEngine {
     // Handle different navigation patterns
     else if ('next' in currentBlock) {
       nextBlockId = currentBlock.next as string;
+      // Debug logging for VideoAsk questions
+      if (currentQuestionId === 'b12' || currentQuestionId === 'b7') {
+        logger.info(`VideoAsk navigation: ${currentQuestionId} -> ${nextBlockId}`);
+      }
     }
 
     // Handle option-based navigation
@@ -302,6 +315,16 @@ class SurveyEngine {
           'conditionalNext' in nextBlock) {
         logger.debug(`Auto-advancing through empty routing block: ${nextBlockId}`);
         return this.getNextQuestion(sessionId, nextBlockId, 'acknowledged');
+      }
+      
+      // Special logging for VideoAsk questions
+      if (nextBlock && nextBlock.type === 'videoask') {
+        logger.info(`Returning VideoAsk block: ${nextBlockId}`, {
+          id: nextBlock.id,
+          type: nextBlock.type,
+          videoAskFormId: nextBlock.videoAskFormId,
+          content: nextBlock.content
+        });
       }
       
       logger.debug(`Returning next block:`, nextBlock);

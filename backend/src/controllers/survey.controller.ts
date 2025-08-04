@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { surveyService } from '../services/survey.service';
 import { surveyEngine } from '../services/surveyEngine';
 import { AppError } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 class SurveyController {
   async startSurvey(req: Request, res: Response, next: NextFunction) {
@@ -43,6 +44,9 @@ class SurveyController {
     try {
       const { sessionId, questionId, answer } = req.body;
       
+      // Debug logging
+      logger.info(`Answer submission received: questionId=${questionId}, sessionId=${sessionId}`);
+      
 
       // Validate session exists
       const surveyState = await surveyEngine.getState(sessionId);
@@ -72,6 +76,11 @@ class SurveyController {
         questionId,
         answer
       );
+      
+      // Debug logging for VideoAsk questions
+      if (questionId === 'b7' || questionId === 'b12') {
+        logger.info(`VideoAsk answer submitted: ${questionId} -> ${nextQuestion?.id}`);
+      }
 
       // Calculate progress
       const progress = await surveyEngine.calculateProgress(sessionId);

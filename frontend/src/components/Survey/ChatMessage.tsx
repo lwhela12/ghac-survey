@@ -4,6 +4,7 @@ import styled, { css, keyframes } from 'styled-components';
 import amandaIcon from '../../../assets/images/Amanda_icon.png';
 import { useAppDispatch } from '../../hooks/redux';
 import { submitAnswer } from '../../store/slices/surveySlice';
+import VideoAskQuestion from './QuestionTypes/VideoAskQuestion';
 
 interface ChatMessageProps {
   message: {
@@ -103,6 +104,24 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
 
   // Check if this is a video message
   const isVideoMessage = message.question?.type === 'video-autoplay' && message.question?.videoUrl;
+  const isVideoAskMessage = message.question?.type === 'videoask';
+
+  // Handle VideoAsk answer
+  const handleVideoAskAnswer = (answer: any) => {
+    if (message.question) {
+      console.log('ChatMessage - VideoAsk answer submission:', {
+        messageId: message.id,
+        questionId: message.question.id,
+        questionContent: message.question.content,
+        videoAskFormId: message.question.videoAskFormId,
+        answer
+      });
+      dispatch(submitAnswer({
+        questionId: message.question.id,
+        answer
+      }));
+    }
+  };
 
   return (
     <Container type={message.type}>
@@ -111,6 +130,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         {isVideoMessage ? (
           <>
             {renderContent()}
+            <Timestamp type={message.type}>{formatTime(message.timestamp)}</Timestamp>
+          </>
+        ) : isVideoAskMessage ? (
+          <>
+            <VideoAskWrapper>
+              <VideoAskQuestion 
+                question={message.question}
+                onAnswer={handleVideoAskAnswer}
+                disabled={false}
+              />
+            </VideoAskWrapper>
             <Timestamp type={message.type}>{formatTime(message.timestamp)}</Timestamp>
           </>
         ) : (
@@ -299,6 +329,14 @@ const SkipButton = styled.button`
   &:hover {
     color: ${({ theme }) => theme.colors.primary};
     text-decoration: underline;
+  }
+`;
+
+const VideoAskWrapper = styled.div`
+  margin-left: 48px;
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    margin-left: 0;
   }
 `;
 

@@ -86,8 +86,10 @@ class SurveyService {
       } else if (Array.isArray(data.answer)) {
         answerChoiceIds = data.answer;
       } else if (typeof data.answer === 'object') {
-        if (data.answer.videoUrl) {
-          videoUrl = data.answer.videoUrl;
+        if (data.answer.videoUrl || data.answer.responseUrl) {
+          videoUrl = data.answer.videoUrl || data.answer.responseUrl;
+          // Also store the full VideoAsk response data in metadata
+          metadata = { ...data.answer };
         } else if (data.answer.text) {
           answerText = data.answer.text;
         } else {
@@ -105,11 +107,12 @@ class SurveyService {
         blockId: data.questionId
       };
       
-      // Debug logging for semantic differential after processing
-      if (data.questionId === 'b9') {
-        logger.info('b9 processed data:', {
+      // Debug logging for semantic differential and VideoAsk after processing
+      if (data.questionId === 'b9' || data.questionId === 'b7') {
+        logger.info(`${data.questionId} processed data:`, {
           answerText,
           answerChoiceIds,
+          videoUrl,
           metadata,
           metadataWithBlockId
         });

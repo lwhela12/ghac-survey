@@ -1,6 +1,7 @@
 import React from 'react';
 import { Question } from '../../types/survey';
 import VideoAutoplay from './QuestionTypes/VideoAutoplay';
+import VideoAskQuestion from './QuestionTypes/VideoAskQuestion';
 import QuickReply from './QuestionTypes/QuickReply';
 import TextInput from './QuestionTypes/TextInput';
 import SingleChoice from './QuestionTypes/SingleChoice';
@@ -28,6 +29,9 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   switch (question.type) {
     case 'video-autoplay':
       return <VideoAutoplay question={question} onComplete={onAnswer} />;
+    
+    case 'videoask':
+      return <VideoAskQuestion question={question} onAnswer={onAnswer} disabled={disabled} />;
     
     case 'quick-reply':
     case 'message-button':

@@ -11,6 +11,8 @@ export interface Question {
   scales?: SemanticScale[];
   fields?: FormField[];
   videoUrl?: string;
+  videoAskFormId?: string;
+  videoDelay?: number;
   duration?: string;
   buttonText?: string;
   persistVideo?: boolean;
@@ -21,6 +23,7 @@ export interface Question {
 
 export type QuestionType =
   | 'video-autoplay'
+  | 'videoask'
   | 'quick-reply'
   | 'message-button'
   | 'text-input'

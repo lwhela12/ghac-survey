@@ -70,6 +70,7 @@ const ChatInterface: React.FC = () => {
     }
   }, [currentQuestion, isLoading]);
 
+
   const handleAnswer = async (answer: any) => {
     if (!currentQuestion || isLoading) return;
 
@@ -88,8 +89,10 @@ const ChatInterface: React.FC = () => {
       }
     }
 
-    // Don't show user message for video-autoplay or dynamic-message questions
-    if (currentQuestion.type !== 'video-autoplay' && currentQuestion.type !== 'dynamic-message') {
+    // Don't show user message for video-autoplay, videoask, or dynamic-message questions
+    if (currentQuestion.type !== 'video-autoplay' && 
+        currentQuestion.type !== 'videoask' && 
+        currentQuestion.type !== 'dynamic-message') {
       // Add user message for visual feedback
       const displayAnswer = formatAnswerForDisplay(answer, currentQuestion.type);
       dispatch(addUserMessage(displayAnswer));
@@ -153,6 +156,11 @@ const ChatInterface: React.FC = () => {
     if (typeof answer === 'object' && answer !== null) {
       if (answer.text) return answer.text;
       if (answer.videoUrl) return '🎥 Video response recorded';
+      // Handle VideoAsk responses
+      if (answer.type === 'video') return '🎥 Video response recorded';
+      if (answer.type === 'audio') return '🎤 Audio response recorded';
+      if (answer.type === 'text') return '💬 Text response submitted';
+      if (answer.type === 'skipped') return 'Skipped';
     }
     
     // Default: return as string
@@ -164,8 +172,8 @@ const ChatInterface: React.FC = () => {
       <ArtisticBackground />
       <ChatContainer ref={chatContainerRef}>
         <ChatContent>
-          {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+          {messages.map((message, index) => (
+            <ChatMessage key={`${message.id}-${index}`} message={message} />
           ))}
           
           {isTyping && <TypingIndicator />}
@@ -173,6 +181,7 @@ const ChatInterface: React.FC = () => {
           {/* Inline Question Area */}
           {currentQuestion && !isLoading && !isTyping && 
            currentQuestion.type !== 'dynamic-message' && 
+           currentQuestion.type !== 'videoask' &&
            !(currentQuestion.type === 'video-autoplay' && currentQuestion.persistVideo) && (
             <QuestionArea>
               {(currentQuestion.type === 'video-autoplay' || 
