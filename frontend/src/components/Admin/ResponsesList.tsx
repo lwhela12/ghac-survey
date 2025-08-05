@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { adminApi } from '../../services/api';
+import { clerkAdminApi } from '../../services/clerkApi';
 
 interface Response {
   id: string;
@@ -28,16 +28,10 @@ const ResponsesList: React.FC = () => {
   const loadResponses = async () => {
     try {
       setIsLoading(true);
-      const params = {
-        page: currentPage,
-        limit: 20,
-        surveyId: '11111111-1111-1111-1111-111111111111',
-        ...(statusFilter !== 'all' && { status: statusFilter }),
-      };
-      
-      const data = await adminApi.getResponses(params);
-      setResponses(data.responses);
-      setTotalPages(data.pagination.totalPages);
+      const response = await clerkAdminApi.getResponses(currentPage, 20);
+      const data = response.data;
+      setResponses(data.responses || []);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to load responses:', error);
     } finally {
@@ -80,9 +74,21 @@ const ResponsesList: React.FC = () => {
             <option value="incomplete">In Progress Only</option>
           </FilterSelect>
           <ExportButton
-            onClick={() => {
-              const url = `/api/admin/export?surveyId=11111111-1111-1111-1111-111111111111&format=csv`;
-              window.location.href = url;
+            onClick={async () => {
+              try {
+                const blob = await clerkAdminApi.exportResponses('11111111-1111-1111-1111-111111111111');
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ghac-survey-export-${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+              } catch (error) {
+                console.error('Export failed:', error);
+                alert('Failed to export data. Please try again.');
+              }
             }}
           >
             💾 Export CSV

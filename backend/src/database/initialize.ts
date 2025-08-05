@@ -1,8 +1,7 @@
 import { Pool } from 'pg';
 import { logger } from '../utils/logger';
-import fs from 'fs/promises';
-import path from 'path';
 import dotenv from 'dotenv';
+import surveyData from './survey-structure.json';
 
 // Load environment variables before checking DATABASE_URL
 dotenv.config();
@@ -65,20 +64,27 @@ export const initializeDatabase = async () => {
 
 const loadSurveyStructure = async () => {
   try {
+
     // Check if survey already exists
     const { rows } = await pool!.query(
       'SELECT id FROM surveys WHERE name = $1',
-      ['GHAC Donor Survey V1']
+      [surveyData.survey.name]
     );
 
     if (rows.length > 0) {
-      logger.info('Survey structure already loaded');
+      const existingId = rows[0].id;
+      if (existingId !== surveyData.survey.id) {
+        logger.info(`Updating survey ID from ${existingId} to ${surveyData.survey.id}`);
+        await pool!.query(
+          'UPDATE surveys SET id = $1 WHERE id = $2',
+          [surveyData.survey.id, existingId]
+        );
+      } else {
+        logger.info('Survey structure already loaded');
+      }
       return;
     }
 
-    // Load survey structure from JSON
-    const surveyDataPath = path.join(__dirname, 'survey-structure.json');
-    const surveyData = JSON.parse(await fs.readFile(surveyDataPath, 'utf-8'));
 
     // Insert survey
     await pool!.query(

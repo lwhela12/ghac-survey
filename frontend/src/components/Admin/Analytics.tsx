@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { adminApi } from '../../services/api';
+import { clerkAdminApi } from '../../services/clerkApi';
 
 interface QuestionStats {
   questionId: string;
@@ -26,11 +26,12 @@ const Analytics: React.FC = () => {
   const loadAnalytics = async () => {
     try {
       setIsLoading(true);
-      const data = await adminApi.getAnalytics('11111111-1111-1111-1111-111111111111');
+      const response = await clerkAdminApi.getAnalyticsSummary();
+      const data = response.data;
       setStats({
-        totalResponses: parseInt(data.total_responses) || 0,
-        completedResponses: parseInt(data.completed_responses) || 0,
-        avgCompletionTime: parseFloat(data.avg_completion_time_minutes) || 0,
+        totalResponses: data.totalResponses || 0,
+        completedResponses: data.completedResponses || 0,
+        avgCompletionTime: data.avgCompletionTime || 0,
       });
       
       // In a real implementation, we'd have an endpoint for question-level stats
@@ -93,7 +94,7 @@ const Analytics: React.FC = () => {
         <Title>Survey Analytics</Title>
         <ExportButton onClick={async () => {
           try {
-            const blob = await adminApi.exportResponses('11111111-1111-1111-1111-111111111111');
+            const blob = await clerkAdminApi.exportResponses('11111111-1111-1111-1111-111111111111');
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

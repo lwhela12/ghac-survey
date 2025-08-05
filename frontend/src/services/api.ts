@@ -48,9 +48,9 @@ api.interceptors.response.use(
       } catch (refreshError) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        // Only redirect if we're not already on the login page
-        if (!window.location.pathname.includes('/admin/login')) {
-          window.location.href = '/admin/login';
+        // Only redirect if we're not already on the sign-in page
+        if (!window.location.pathname.includes('/admin/sign-in')) {
+          window.location.href = '/admin/sign-in';
         }
         return Promise.reject(refreshError);
       }
@@ -67,6 +67,7 @@ export const surveyApi = {
   startSurvey: async (name: string) => {
     const response = await api.post('/api/survey/start', {
       name,
+      // Use ID matching backend survey-structure.json
       surveyId: '11111111-1111-1111-1111-111111111111',
     });
     currentSessionId = response.data.sessionId;

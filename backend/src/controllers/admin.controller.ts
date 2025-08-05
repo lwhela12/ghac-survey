@@ -465,9 +465,9 @@ class AdminController {
       // If no database, return mock analytics
       if (!db) {
         const mockAnalytics = {
-          total_responses: '25',
-          completed_responses: '20',
-          avg_completion_time_minutes: '8.5'
+          totalResponses: 25,
+          completedResponses: 20,
+          avgCompletionTime: 8.5
         };
         
         return res.json(mockAnalytics);
@@ -483,8 +483,13 @@ class AdminController {
       `;
 
       const result = await db.query(summaryQuery, [surveyId]);
-
-      res.json(result.rows[0]);
+      
+      const data = result.rows[0];
+      res.json({
+        totalResponses: parseInt(data.total_responses) || 0,
+        completedResponses: parseInt(data.completed_responses) || 0,
+        avgCompletionTime: parseFloat(data.avg_completion_time_minutes) || 0
+      });
     } catch (error) {
       next(error);
       return;

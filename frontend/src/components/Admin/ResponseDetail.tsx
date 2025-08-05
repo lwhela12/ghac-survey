@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { adminApi } from '../../services/api';
+import { clerkAdminApi } from '../../services/clerkApi';
 import { getQuestionTextFromId, formatComplexAnswer, getQuestionType } from '../../utils/questionTextMapping';
 
 interface ResponseData {
@@ -40,9 +40,10 @@ const ResponseDetail: React.FC = () => {
   const loadResponseDetail = async () => {
     try {
       setIsLoading(true);
-      const data = await adminApi.getResponseDetail(responseId!);
+      const response = await clerkAdminApi.getResponseDetail(responseId!);
+      const data = response.data;
       setResponse(data.response);
-      setAnswers(data.answers);
+      setAnswers(data.answers || []);
     } catch (error) {
       console.error('Failed to load response detail:', error);
     } finally {
