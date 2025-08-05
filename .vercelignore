@@ -49,10 +49,13 @@ backend/diagnose-*.sql
 **/node_modules/
 
 # Build artifacts (will be built on Vercel)
-**/dist/
+frontend/dist/
 **/build/
 
-# Don't ignore backend source files needed by api
+# Don't ignore backend dist files needed by api
+!backend/dist/**
+
+# Don't ignore backend source files needed for build
 !backend/src/**
 
 # TypeScript cache
