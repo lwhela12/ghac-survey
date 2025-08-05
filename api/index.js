@@ -1,126 +1,83 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config();
 
 const app = express();
 
-// Enable CORS for all origins during debugging
-app.use(cors({
-  origin: true,
+// CORS configuration for production
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In production, check against allowed origins
+    if (process.env.NODE_ENV === 'production') {
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        'https://ghac-survey.vercel.app',
+        /^https:\/\/ghac-survey-.*\.vercel\.app$/,  // Allow Vercel preview deployments
+        /^https:\/\/.*-lwhela12s-projects\.vercel\.app$/  // Allow your project deployments
+      ].filter(Boolean);
+      
+      const isAllowed = allowedOrigins.some(allowed => {
+        if (allowed instanceof RegExp) return allowed.test(origin);
+        return allowed === origin;
+      });
+      
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    } else {
+      // In development, allow all origins
+      callback(null, true);
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
 
-// Parse JSON bodies
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
-  if (req.body && Object.keys(req.body).length > 0) {
-    console.log('Request body:', JSON.stringify(req.body));
-  }
-  next();
-});
+// Import routes and middleware from bundled dist
+const { initializeDatabase } = require('./dist/database/initialize');
+const surveyRoutes = require('./dist/routes/survey.routes').default;
+const adminMockRoutes = require('./dist/routes/admin-mock.routes').default;
+const clerkAdminRoutes = require('./dist/routes/clerkAdmin.routes').default;
+const webhookRoutes = require('./dist/routes/webhook.routes').default;
+const { errorHandler } = require('./dist/middleware/errorHandler');
+const { logger } = require('./dist/utils/logger');
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Health check endpoint
+app.get('/api/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Survey start endpoint
-app.post('/api/survey/start', (req, res) => {
-  try {
-    console.log('Survey start request received');
-    console.log('Body:', req.body);
-    
-    const sessionId = 'session-' + Date.now();
-    const response = {
-      sessionId: sessionId,
-      firstQuestion: {
-        id: 'b1',
-        content: 'Welcome to the GHAC Donor Survey! What is your name?',
-        type: 'text-input',
-        required: true,
-        placeholder: 'Enter your name'
-      },
-      progress: 0
-    };
-    
-    console.log('Sending response:', JSON.stringify(response));
-    
-    // Ensure we're sending JSON with proper headers
-    res.status(200).json(response);
-  } catch (error) {
-    console.error('Error in /api/survey/start:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
-    });
-  }
+// API Routes - add /api prefix for Vercel
+app.use('/api/survey', surveyRoutes);
+app.use('/api/admin', adminMockRoutes);
+app.use('/api/clerk-admin', clerkAdminRoutes);
+app.use('/api/webhook', webhookRoutes);
+
+// Error handling
+app.use(errorHandler);
+
+// Initialize database (non-blocking for serverless)
+initializeDatabase().catch(err => {
+  logger.error('Failed to initialize database:', err);
 });
 
-// Survey answer endpoint (minimal implementation)
-app.post('/api/survey/answer', (req, res) => {
-  try {
-    console.log('Survey answer request:', req.body);
-    
-    res.json({
-      nextQuestion: {
-        id: 'b2',
-        content: 'Thank you! How are you connected to GHAC?',
-        type: 'single-choice',
-        options: ['Donor', 'Volunteer', 'Staff', 'Other'],
-        required: true
-      },
-      progress: 10
-    });
-  } catch (error) {
-    console.error('Error in /api/survey/answer:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
-    });
-  }
-});
-
-// Catch-all for debugging
-app.all('/api/*', (req, res) => {
-  console.log('Unhandled route:', req.method, req.path);
-  res.status(404).json({
-    error: 'Route not found',
-    path: req.path,
-    method: req.method,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Root handler for Vercel
-app.get('/', (req, res) => {
-  res.json({
-    message: 'GHAC Survey API',
-    version: '1.0.0',
-    endpoints: [
-      'GET /api/health',
-      'POST /api/survey/start',
-      'POST /api/survey/answer'
-    ]
-  });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Express error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
-});
-
+// Export for Vercel
 module.exports = app;
