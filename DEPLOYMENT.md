@@ -5,6 +5,8 @@ This application is deployed as two separate services:
 - **Frontend**: React app on Vercel
 - **Backend**: Node.js/Express API on Railway/Render/Heroku
 
+`npm run build` now compiles only the backend service (`npm run build:backend`). If deploying the frontend separately, configure your environment to run `npm run build:frontend` or `cd frontend && npm install && npm run build` (e.g., via Vercel's `buildCommand`).
+
 ## Frontend Deployment (Vercel)
 
 ### 1. Connect to Vercel

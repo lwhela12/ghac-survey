@@ -37,6 +37,8 @@ Follow the prompts to:
 2. Import your Git repository
 3. Vercel will auto-detect the configuration from `vercel.json`
 
+The root `npm run build` script only builds the backend (`npm run build:backend`). Vercel's `vercel.json` handles the frontend build with `cd frontend && npm install && npm run build`. If you deploy the frontend using another provider, override its build command accordingly.
+
 ### 4. Configure Environment Variables
 
 In Vercel Dashboard > Settings > Environment Variables, add:
