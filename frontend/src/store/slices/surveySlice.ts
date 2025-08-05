@@ -100,15 +100,19 @@ const surveySlice = createSlice({
         state.sessionId = action.payload.sessionId;
         state.currentQuestion = action.payload.firstQuestion;
         // Always add the first question as a bot message
-        // Create a deep copy to avoid shared references
-        const questionCopy = JSON.parse(JSON.stringify(action.payload.firstQuestion));
-        state.messages.push({
-          id: `bot-${Date.now()}-${action.payload.firstQuestion.id}`,
-          type: 'bot',
-          content: questionCopy.content,
-          question: questionCopy,
-          timestamp: new Date().toISOString(),
-        });
+        if (action.payload.firstQuestion) {
+          // Create a deep copy to avoid shared references
+          const questionCopy = JSON.parse(JSON.stringify(action.payload.firstQuestion));
+          state.messages.push({
+            id: `bot-${Date.now()}-${action.payload.firstQuestion.id}`,
+            type: 'bot',
+            content: questionCopy.content,
+            question: questionCopy,
+            timestamp: new Date().toISOString(),
+          });
+        } else {
+          console.error('No firstQuestion in survey start response:', action.payload);
+        }
       })
       .addCase(startSurvey.rejected, (state, action) => {
         state.isLoading = false;
