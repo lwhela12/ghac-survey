@@ -45,7 +45,7 @@ app.post('/api/survey/start', (req, res) => {
       firstQuestion: {
         id: 'b1',
         content: 'Welcome to the GHAC Donor Survey! What is your name?',
-        type: 'text',
+        type: 'text-input',
         required: true,
         placeholder: 'Enter your name'
       },
