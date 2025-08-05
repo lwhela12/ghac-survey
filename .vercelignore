@@ -1,0 +1,56 @@
+# Development files
+docker-compose.yml
+Dockerfile*
+.dockerignore
+
+# Scripts
+scripts/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+jest.config.js
+coverage/
+
+# Development environment
+.env
+.env.local
+.env.development
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Database files
+*.sql
+backend/check-*.sql
+backend/diagnose-*.sql
+
+# Node modules (Vercel will install fresh)
+**/node_modules/
+
+# Build artifacts (will be built on Vercel)
+**/dist/
+**/build/
+
+# TypeScript cache
+*.tsbuildinfo
