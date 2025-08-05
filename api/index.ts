@@ -53,8 +53,12 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// In Vercel, routes are already prefixed with /api
+// In local dev, we need the /api prefix
+const routePrefix = process.env.VERCEL ? '' : '/api';
+
 // Health check endpoint
-app.get('/api/health', (_req, res) => {
+app.get(`${routePrefix}/health`, (_req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -63,10 +67,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 // API Routes
-app.use('/api/survey', surveyRoutes);
-app.use('/api/admin', adminMockRoutes);
-app.use('/api/clerk-admin', clerkAdminRoutes);
-app.use('/api/webhook', webhookRoutes);
+app.use(`${routePrefix}/survey`, surveyRoutes);
+app.use(`${routePrefix}/admin`, adminMockRoutes);
+app.use(`${routePrefix}/clerk-admin`, clerkAdminRoutes);
+app.use(`${routePrefix}/webhook`, webhookRoutes);
 
 // Error handling
 app.use(errorHandler);
