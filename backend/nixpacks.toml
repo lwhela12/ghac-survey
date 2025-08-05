@@ -1,11 +1,14 @@
 [phases.setup]
-nixPkgs = ["nodejs", "npm"]
+nixPkgs = ["nodejs-18_x", "npm-9_x"]
 
 [phases.install]
-cmds = ["npm install --include=dev"]
+cmds = ["npm ci --include=dev"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = [
+  "ls -la node_modules/.bin/",
+  "npm run build"
+]
 
 [start]
 cmd = "npm start"
