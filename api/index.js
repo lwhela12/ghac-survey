@@ -1,14 +1,14 @@
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
-import dotenv from 'dotenv';
-import { initializeDatabase } from '../backend/dist/database/initialize';
-import surveyRoutes from '../backend/dist/routes/survey.routes';
-import adminMockRoutes from '../backend/dist/routes/admin-mock.routes';
-import clerkAdminRoutes from '../backend/dist/routes/clerkAdmin.routes';
-import webhookRoutes from '../backend/dist/routes/webhook.routes';
-import { errorHandler } from '../backend/dist/middleware/errorHandler';
-import { logger } from '../backend/dist/utils/logger';
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const dotenv = require('dotenv');
+const { initializeDatabase } = require('../backend/dist/database/initialize');
+const surveyRoutes = require('../backend/dist/routes/survey.routes').default;
+const adminMockRoutes = require('../backend/dist/routes/admin-mock.routes').default;
+const clerkAdminRoutes = require('../backend/dist/routes/clerkAdmin.routes').default;
+const webhookRoutes = require('../backend/dist/routes/webhook.routes').default;
+const { errorHandler } = require('../backend/dist/middleware/errorHandler');
+const { logger } = require('../backend/dist/utils/logger');
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -26,7 +26,8 @@ const corsOptions = {
       const allowedOrigins = [
         process.env.FRONTEND_URL,
         'https://ghac-survey.vercel.app',
-        /^https:\/\/ghac-survey-.*\.vercel\.app$/  // Allow Vercel preview deployments
+        /^https:\/\/ghac-survey-.*\.vercel\.app$/,  // Allow Vercel preview deployments
+        /^https:\/\/.*-lwhela12s-projects\.vercel\.app$/  // Allow your project deployments
       ].filter(Boolean);
       
       const isAllowed = allowedOrigins.some(allowed => {
@@ -79,7 +80,7 @@ initializeDatabase().catch(err => {
 });
 
 // Export for Vercel
-export default app;
+module.exports = app;
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
