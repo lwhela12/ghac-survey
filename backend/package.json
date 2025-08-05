@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "npx tsc && cp -r src/database/*.json dist/database/",
+    "build": "tsc && cp -r src/database/*.json dist/database/",
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -31,7 +31,9 @@
     "morgan": "^1.10.0",
     "pg": "^8.11.3",
     "redis": "^4.6.12",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
+    "typescript": "^5.3.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -51,7 +53,6 @@
     "prisma": "^5.8.1",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "ts-node": "^10.9.2"
   }
 }
