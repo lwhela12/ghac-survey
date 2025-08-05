@@ -65,7 +65,7 @@ let currentSessionId: string | null = null;
 
 export const surveyApi = {
   startSurvey: async (name: string) => {
-    const response = await api.post('/api/survey/start', {
+    const response = await api.post('/survey/start', {
       name,
       // Use ID matching backend survey-structure.json
       surveyId: '11111111-1111-1111-1111-111111111111',
@@ -78,7 +78,7 @@ export const surveyApi = {
     if (!currentSessionId) throw new Error('No active session');
     
     
-    const response = await api.post('/api/survey/answer', {
+    const response = await api.post('/survey/answer', {
       sessionId: currentSessionId,
       questionId,
       answer,
@@ -88,7 +88,7 @@ export const surveyApi = {
 
   completeSurvey: async () => {
     if (!currentSessionId) throw new Error('No active session');
-    const response = await api.post('/api/survey/complete', {
+    const response = await api.post('/survey/complete', {
       sessionId: currentSessionId,
     });
     currentSessionId = null;
@@ -96,7 +96,7 @@ export const surveyApi = {
   },
 
   getSurveyState: async (sessionId: string) => {
-    const response = await api.get(`/api/survey/state/${sessionId}`);
+    const response = await api.get(`/survey/state/${sessionId}`);
     return response.data;
   },
 };
