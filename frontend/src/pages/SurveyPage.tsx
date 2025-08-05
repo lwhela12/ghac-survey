@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import ChatInterface from '../components/Survey/ChatInterface';
 import ProgressBar from '../components/Survey/ProgressBar';
-import { initializeSurvey, checkExistingSession, resumeSurvey } from '../store/slices/surveySlice';
+import { initializeSurvey, resumeSurvey } from '../store/slices/surveySlice';
 import { surveyApi } from '../services/api';
 import ghacLogo from '../assets/images/GHAC.jpg';
 
@@ -161,7 +161,7 @@ const ResumePrompt = styled.div`
 const PromptCard = styled.div`
   background: white;
   border-radius: 16px;
-  padding: ${({ theme }) => theme.spacing.xxl};
+  padding: ${({ theme }) => theme.spacing.xl};
   max-width: 500px;
   width: 100%;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
@@ -204,7 +204,7 @@ const PrimaryButton = styled.button`
   transition: background 0.3s ease;
   
   &:hover {
-    background: ${({ theme }) => theme.colors.primaryDark};
+    background: #003d7a; /* Darker shade of primary */
   }
 `;
 
