@@ -134,6 +134,22 @@ const ChatInterface: React.FC = () => {
       return answer ? 'Yes' : 'No';
     }
     
+    // For semantic differential questions
+    if (questionType === 'semantic-differential' && typeof answer === 'object' && answer !== null) {
+      // Create visual representation with dots only
+      const lines: string[] = [];
+      
+      // The answer object contains the values keyed by variable names
+      // We'll display them in the order they were stored
+      Object.values(answer).forEach((value: any) => {
+        // The value should be 1-5
+        const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
+        lines.push(dots);
+      });
+      
+      return lines.join('\n');
+    }
+    
     // For questions with options, find the label
     if (currentQuestion?.options) {
       // Handle array answers (multi-select)
@@ -154,6 +170,9 @@ const ChatInterface: React.FC = () => {
     
     // Handle special object types
     if (typeof answer === 'object' && answer !== null) {
+      // Handle contact form responses
+      if (answer.email) return answer.email;
+      if (answer.phone) return answer.phone;
       if (answer.text) return answer.text;
       if (answer.videoUrl) return '🎥 Video response recorded';
       // Handle VideoAsk responses
@@ -181,15 +200,15 @@ const ChatInterface: React.FC = () => {
           {/* Inline Question Area */}
           {currentQuestion && !isLoading && !isTyping && 
            currentQuestion.type !== 'dynamic-message' && 
-           currentQuestion.type !== 'videoask' &&
-           !(currentQuestion.type === 'video-autoplay' && currentQuestion.persistVideo) && (
+           currentQuestion.type !== 'videoask' && 
+           currentQuestion.type !== 'video-autoplay' && (
             <QuestionArea>
-              {(currentQuestion.type === 'video-autoplay' || 
-                currentQuestion.type === 'single-choice' ||
+              {(currentQuestion.type === 'single-choice' ||
                 currentQuestion.type === 'multi-choice' ||
                 currentQuestion.type === 'quick-reply' ||
                 currentQuestion.type === 'message-button') ? (
                 <QuestionRenderer 
+                  key={currentQuestion.id}
                   question={currentQuestion} 
                   onAnswer={handleAnswer}
                   disabled={isLoading}
@@ -197,6 +216,7 @@ const ChatInterface: React.FC = () => {
               ) : (
                 <QuestionWrapper>
                   <QuestionRenderer 
+                    key={currentQuestion.id}
                     question={currentQuestion} 
                     onAnswer={handleAnswer}
                     disabled={isLoading}

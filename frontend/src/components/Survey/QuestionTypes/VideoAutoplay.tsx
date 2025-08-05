@@ -1,36 +1,83 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { Question } from '../../../types/survey';
 
 interface VideoAutoplayProps {
   question: Question;
-  onComplete: () => void;
+  onComplete: (answer: string) => void;
+  disabled?: boolean;
 }
 
-const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete }) => {
+const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, disabled = false }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [showPlayButton, setShowPlayButton] = React.useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [showPlayButton, setShowPlayButton] = useState(false);
+  const hasCompleted = useRef(false);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video) {
-      video.play().catch(error => {
-        console.error('Autoplay failed:', error);
-        // If autoplay fails, show play button
-        setShowPlayButton(true);
-      });
-    }
-  }, []);
-
-  const handleVideoEnd = () => {
-    // Only auto-advance if persistVideo is not set
-    if (!question.persistVideo) {
-      setTimeout(() => onComplete('watched'), 1000);
+  const handleCompletion = (status: 'watched' | 'skipped') => {
+    if (hasCompleted.current) return;
+    hasCompleted.current = true;
+    
+    // For persistVideo, we need to handle completion differently
+    if (question.persistVideo) {
+      // Just submit the answer without auto-advancing
+      onComplete(status);
     } else {
-      // If persistVideo is true, just mark as watched without auto-advancing
-      onComplete('watched');
+      // Auto-advance after a delay
+      setTimeout(() => onComplete(status), 1000);
     }
   };
+
+  useEffect(() => {
+    if (question.videoAskId) {
+      // For justvideo embeds (like the intro), we'll use a timer based on the video duration
+      // since they don't send reliable completion events
+      const videoDuration = question.duration ? 
+        parseInt(question.duration.match(/\d+/)?.[0] || '60') * 1000 : 
+        60000; // Default to 60 seconds if no duration specified
+      
+      // Add a small buffer for loading time
+      const completionTime = videoDuration + 2000;
+      
+      console.log(`Setting up VideoAsk intro timer for ${completionTime}ms`);
+      
+      const completionTimer = setTimeout(() => {
+        console.log('VideoAsk intro timer completed');
+        handleCompletion('watched');
+      }, completionTime);
+
+      // Still listen for messages in case VideoAsk sends completion events
+      const handleMessage = (event: MessageEvent) => {
+        if (!event.origin.includes('videoask.com') || hasCompleted.current) return;
+        
+        // Log events for debugging
+        console.log('VideoAsk event:', event.data.type || event.data.event);
+        
+        // Check for any completion-like events
+        if (event.data.type === 'video_complete' ||
+            event.data.type === 'videoask_completed' ||
+            event.data.event === 'ended') {
+          console.log('Video completed via event');
+          clearTimeout(completionTimer);
+          handleCompletion('watched');
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      return () => {
+        window.removeEventListener('message', handleMessage);
+        clearTimeout(completionTimer);
+      };
+    } else {
+      const video = videoRef.current;
+      if (video) {
+        video.play().catch(() => {
+          setShowPlayButton(true);
+        });
+      }
+    }
+  }, [question.videoAskId, onComplete]);
 
   const handlePlayClick = () => {
     const video = videoRef.current;
@@ -43,23 +90,36 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete }) =
   return (
     <Container>
       <VideoWrapper>
-        <Video
-          ref={videoRef}
-          src={question.videoUrl}
-          controls
-          onEnded={handleVideoEnd}
-          playsInline
-          loop={false} // Prevent looping
-        />
-        {showPlayButton && (
-          <PlayButtonOverlay onClick={handlePlayClick}>
-            <PlayButton>▶️</PlayButton>
-          </PlayButtonOverlay>
+        {question.videoAskId ? (
+          <VideoAskIframe
+            ref={iframeRef}
+            src={`https://www.videoask.com/${question.videoAskId}?justvideo=1&autoplay=1&muted=0`}
+            allow="camera *; microphone *; autoplay *; encrypted-media *; fullscreen *; display-capture *;"
+            title="Welcome video from Amanda"
+          />
+        ) : (
+          <>
+            <Video
+              ref={videoRef}
+              src={question.videoUrl}
+              controls
+              onEnded={() => handleCompletion('watched')}
+              playsInline
+              loop={false}
+            />
+            {showPlayButton && (
+              <PlayButtonOverlay onClick={handlePlayClick}>
+                <PlayButton>▶️</PlayButton>
+              </PlayButtonOverlay>
+            )}
+          </>
         )}
       </VideoWrapper>
-      <SkipButton onClick={() => onComplete('skipped')}>
-        Skip Video →
-      </SkipButton>
+      {!disabled && (
+        <SkipButton onClick={() => handleCompletion('skipped')}>
+          Skip Video →
+        </SkipButton>
+      )}
     </Container>
   );
 };
@@ -142,6 +202,13 @@ const PlayButton = styled.div`
   &:hover {
     transform: scale(1.1);
   }
+`;
+
+const VideoAskIframe = styled.iframe`
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
 `;
 
 export default VideoAutoplay;

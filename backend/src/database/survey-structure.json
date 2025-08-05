@@ -59,8 +59,8 @@
       "id": "b1",
       "type": "video-autoplay",
       "content": "",
-      "videoUrl": "/videos/welcome-video.mp4",
-      "duration": "45-60 seconds",
+      "videoAskId": "f5lsaq7hr",
+      "duration": "65 seconds",
       "persistVideo": true,
       "next": "b1a"
     },
@@ -743,7 +743,15 @@
     "b12-response": {
       "id": "b12-response",
       "type": "dynamic-message",
-      "content": "What a thoughtful vision—thank you for sharing that!",
+      "contentCondition": {
+        "if": { "variable": "future_vision_type", "equals": "skipped" },
+        "then": "skip",
+        "else": "responded"
+      },
+      "content": {
+        "skip": "No problem at all, let's continue!",
+        "responded": "What a thoughtful vision—thank you for sharing that!"
+      },
       "autoAdvance": true,
       "autoAdvanceDelay": 1000,
       "next": "b13"

@@ -12,6 +12,7 @@ export interface Question {
   fields?: FormField[];
   videoUrl?: string;
   videoAskFormId?: string;
+  videoAskId?: string;
   videoDelay?: number;
   duration?: string;
   buttonText?: string;

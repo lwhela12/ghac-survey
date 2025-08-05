@@ -28,7 +28,7 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
 }) => {
   switch (question.type) {
     case 'video-autoplay':
-      return <VideoAutoplay question={question} onComplete={onAnswer} />;
+      return <VideoAutoplay question={question} onComplete={onAnswer} disabled={disabled} />;
     
     case 'videoask':
       return <VideoAskQuestion question={question} onAnswer={onAnswer} disabled={disabled} />;

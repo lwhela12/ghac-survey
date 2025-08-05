@@ -69,6 +69,12 @@ const surveySlice = createSlice({
         timestamp: new Date().toISOString(),
       });
     },
+    updateMessageQuestion: (state, action: PayloadAction<{ messageId: string; updates: Partial<Question> }>) => {
+      const message = state.messages.find(m => m.id === action.payload.messageId);
+      if (message && message.question) {
+        message.question = { ...message.question, ...action.payload.updates };
+      }
+    },
     addUserMessage: (state, action: PayloadAction<string>) => {
       state.messages.push({
         id: `user-${Date.now()}`,
@@ -153,5 +159,5 @@ const surveySlice = createSlice({
   },
 });
 
-export const { initializeSurvey, addBotMessage, addUserMessage, setTyping, resetSurvey } = surveySlice.actions;
+export const { initializeSurvey, addBotMessage, addUserMessage, setTyping, resetSurvey, updateMessageQuestion } = surveySlice.actions;
 export default surveySlice.reducer;

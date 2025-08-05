@@ -2,9 +2,10 @@
 import React, { useRef, useEffect } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import amandaIcon from '../../../assets/images/Amanda_icon.png';
-import { useAppDispatch } from '../../hooks/redux';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { submitAnswer } from '../../store/slices/surveySlice';
 import VideoAskQuestion from './QuestionTypes/VideoAskQuestion';
+import QuestionRenderer from './QuestionRenderer';
 
 interface ChatMessageProps {
   message: {
@@ -18,8 +19,10 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const dispatch = useAppDispatch();
+  const currentQuestion = useAppSelector(state => state.survey.currentQuestion);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoCompleted, setVideoCompleted] = React.useState(false);
+  const [isVideoCompleted, setIsVideoCompleted] = React.useState(false);
 
   useEffect(() => {
     // Disabled autoplay for testing
@@ -63,27 +66,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   };
 
   const renderContent = () => {
-    // Check if this is a video message
-    if (message.question?.type === 'video-autoplay' && message.question?.videoUrl) {
-      return (
-        <>
-          <VideoContainer>
-            <Video
-              ref={videoRef}
-              src={message.question.videoUrl}
-              controls
-              playsInline
-              loop={false}
-              onEnded={handleVideoEnd}
-            />
-          </VideoContainer>
-          {!videoCompleted && (
-            <SkipButton onClick={handleSkipVideo}>
-              Skip Video →
-            </SkipButton>
-          )}
-        </>
-      );
+    // For video-autoplay with VideoAsk, don't render anything - it's handled separately
+    if (message.question?.type === 'video-autoplay' && message.question?.videoAskId) {
+      return null;
     }
     
     // Check if the message has links from the question object
@@ -99,12 +84,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       return <Content dangerouslySetInnerHTML={{ __html: content }} />;
     }
     
+    // Check if this is a semantic differential answer in user message
+    if (message.type === 'user' && message.content.includes('○') && message.content.includes('●')) {
+      return <SemanticContent>{message.content}</SemanticContent>;
+    }
+    
     return <Content>{message.content}</Content>;
   };
 
   // Check if this is a video message
   const isVideoMessage = message.question?.type === 'video-autoplay' && message.question?.videoUrl;
   const isVideoAskMessage = message.question?.type === 'videoask';
+  const isVideoAutoplayMessage = message.question?.type === 'video-autoplay';
 
   // Handle VideoAsk answer
   const handleVideoAskAnswer = (answer: any) => {
@@ -123,13 +114,49 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     }
   };
 
+  // Handle video-autoplay rendering
+  const isCurrentQuestion = currentQuestion?.id === message.question?.id;
+
   return (
     <Container type={message.type}>
       {message.type === 'bot' && <BotAvatar />}
       <MessageWrapper type={message.type}>
-        {isVideoMessage ? (
+        {isVideoAutoplayMessage ? (
           <>
-            {renderContent()}
+            {/* Always render the video if persistVideo is true, hide skip button when not current */}
+            {message.question?.persistVideo ? (
+              <div style={{ position: 'relative' }}>
+                <QuestionRenderer 
+                  key={message.question.id}
+                  question={message.question} 
+                  onAnswer={(answer) => {
+                    if (isCurrentQuestion) {
+                      // Only submit if it's the current question
+                      dispatch(submitAnswer({
+                        questionId: message.question.id,
+                        answer
+                      }));
+                    }
+                  }}
+                  disabled={!isCurrentQuestion}
+                />
+              </div>
+            ) : (
+              /* Non-persist videos only show when current */
+              isCurrentQuestion && (
+                <QuestionRenderer 
+                  key={message.question.id}
+                  question={message.question} 
+                  onAnswer={(answer) => {
+                    dispatch(submitAnswer({
+                      questionId: message.question.id,
+                      answer
+                    }));
+                  }}
+                  disabled={false}
+                />
+              )
+            )}
             <Timestamp type={message.type}>{formatTime(message.timestamp)}</Timestamp>
           </>
         ) : isVideoAskMessage ? (
@@ -338,6 +365,35 @@ const VideoAskWrapper = styled.div`
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     margin-left: 0;
   }
+`;
+
+const SemanticContent = styled.pre`
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: ${({ theme }) => theme.fontSizes.base};
+  line-height: 1.8;
+  white-space: pre;
+  word-wrap: break-word;
+  letter-spacing: 0.1em;
+`;
+
+const VideoAskContainer = styled.div`
+  width: 280px;
+  aspect-ratio: 9 / 16;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 200px;
+  }
+`;
+
+const VideoAskEmbed = styled.iframe`
+  width: 100%;
+  height: 100%;
+  border: none;
 `;
 
 export default ChatMessage;

@@ -171,6 +171,15 @@ class SurveyEngine {
           state.variables.personal_story_type = 'skipped';
         }
         break;
+      case 'b12': // VideoAsk magic wand question
+        if (typeof answer === 'object' && answer !== null) {
+          state.variables.future_vision_type = answer.type || 'skipped';
+          state.variables.future_vision_response_id = answer.responseId || null;
+          state.variables.future_vision_response_url = answer.responseUrl || null;
+        } else {
+          state.variables.future_vision_type = 'skipped';
+        }
+        break;
       case 'b18': // Demographics consent
         state.variables.demographics_consent = answer;
         break;
