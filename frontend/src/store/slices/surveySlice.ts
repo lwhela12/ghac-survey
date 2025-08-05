@@ -96,20 +96,26 @@ const surveySlice = createSlice({
         state.error = null;
       })
       .addCase(startSurvey.fulfilled, (state, action) => {
+        console.log('Survey start fulfilled with payload:', action.payload);
         state.isLoading = false;
         state.sessionId = action.payload.sessionId;
         state.currentQuestion = action.payload.firstQuestion;
         // Always add the first question as a bot message
         if (action.payload.firstQuestion) {
-          // Create a deep copy to avoid shared references
-          const questionCopy = JSON.parse(JSON.stringify(action.payload.firstQuestion));
-          state.messages.push({
-            id: `bot-${Date.now()}-${action.payload.firstQuestion.id}`,
-            type: 'bot',
-            content: questionCopy.content,
-            question: questionCopy,
-            timestamp: new Date().toISOString(),
-          });
+          try {
+            // Create a deep copy to avoid shared references
+            const questionCopy = JSON.parse(JSON.stringify(action.payload.firstQuestion));
+            state.messages.push({
+              id: `bot-${Date.now()}-${action.payload.firstQuestion.id}`,
+              type: 'bot',
+              content: questionCopy.content,
+              question: questionCopy,
+              timestamp: new Date().toISOString(),
+            });
+          } catch (error) {
+            console.error('Error parsing firstQuestion:', error);
+            console.error('firstQuestion value:', action.payload.firstQuestion);
+          }
         } else {
           console.error('No firstQuestion in survey start response:', action.payload);
         }
@@ -140,15 +146,20 @@ const surveySlice = createSlice({
           }
           
           // Create a deep copy of the question to avoid shared references
-          const questionCopy = JSON.parse(JSON.stringify(action.payload.nextQuestion));
-          
-          state.messages.push({
-            id: `bot-${Date.now()}-${action.payload.nextQuestion.id}`,
-            type: 'bot',
-            content: questionCopy.content,
-            question: questionCopy,
-            timestamp: new Date().toISOString(),
-          });
+          try {
+            const questionCopy = JSON.parse(JSON.stringify(action.payload.nextQuestion));
+            
+            state.messages.push({
+              id: `bot-${Date.now()}-${action.payload.nextQuestion.id}`,
+              type: 'bot',
+              content: questionCopy.content,
+              question: questionCopy,
+              timestamp: new Date().toISOString(),
+            });
+          } catch (error) {
+            console.error('Error parsing nextQuestion:', error);
+            console.error('nextQuestion value:', action.payload.nextQuestion);
+          }
         }
       })
       .addCase(submitAnswer.rejected, (state, action) => {

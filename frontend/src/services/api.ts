@@ -68,13 +68,20 @@ let currentSessionId: string | null = null;
 
 export const surveyApi = {
   startSurvey: async (name: string) => {
-    const response = await api.post('/api/survey/start', {
-      name,
-      // Use ID matching backend survey-structure.json
-      surveyId: '11111111-1111-1111-1111-111111111111',
-    });
-    currentSessionId = response.data.sessionId;
-    return response.data;
+    console.log('Starting survey with name:', name);
+    try {
+      const response = await api.post('/api/survey/start', {
+        name,
+        // Use ID matching backend survey-structure.json
+        surveyId: '11111111-1111-1111-1111-111111111111',
+      });
+      console.log('Survey start response:', response.data);
+      currentSessionId = response.data.sessionId;
+      return response.data;
+    } catch (error) {
+      console.error('Survey start error:', error);
+      throw error;
+    }
   },
 
   submitAnswer: async (questionId: string, answer: any) => {
