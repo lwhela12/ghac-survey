@@ -85,12 +85,12 @@ router.post('/refresh', (req, res) => {
         { expiresIn: '15m' }
       );
       
-      res.json({ accessToken });
+      return res.json({ accessToken });
     } else {
-      res.status(404).json({ status: 'error', message: 'User not found' });
+      return res.status(404).json({ status: 'error', message: 'User not found' });
     }
   } catch (error) {
-    res.status(401).json({ status: 'error', message: 'Invalid token' });
+    return res.status(401).json({ status: 'error', message: 'Invalid token' });
   }
 });
 
@@ -139,7 +139,7 @@ router.get('/responses/:responseId', (req, res) => {
     }
   ];
   
-  res.json({ response, answers: mockAnswers });
+  return res.json({ response, answers: mockAnswers });
 });
 
 // Analytics endpoint
