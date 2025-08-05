@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const dotenv = require('dotenv');
 
 // Load environment variables
@@ -19,8 +18,8 @@ const corsOptions = {
       const allowedOrigins = [
         process.env.FRONTEND_URL,
         'https://ghac-survey.vercel.app',
-        /^https:\/\/ghac-survey-.*\.vercel\.app$/,  // Allow Vercel preview deployments
-        /^https:\/\/.*-lwhela12s-projects\.vercel\.app$/  // Allow your project deployments
+        /^https:\/\/ghac-survey-.*\.vercel\.app$/,
+        /^https:\/\/.*-lwhela12s-projects\.vercel\.app$/
       ].filter(Boolean);
       
       const isAllowed = allowedOrigins.some(allowed => {
@@ -47,37 +46,87 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Import routes and middleware from bundled dist
-const { initializeDatabase } = require('./dist/database/initialize');
-const surveyRoutes = require('./dist/routes/survey.routes').default;
-const adminMockRoutes = require('./dist/routes/admin-mock.routes').default;
-const clerkAdminRoutes = require('./dist/routes/clerkAdmin.routes').default;
-const webhookRoutes = require('./dist/routes/webhook.routes').default;
-const { errorHandler } = require('./dist/middleware/errorHandler');
-const { logger } = require('./dist/utils/logger');
-
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    message: 'API is running'
   });
 });
 
-// API Routes - add /api prefix for Vercel
-app.use('/api/survey', surveyRoutes);
-app.use('/api/admin', adminMockRoutes);
-app.use('/api/clerk-admin', clerkAdminRoutes);
-app.use('/api/webhook', webhookRoutes);
+// For now, let's get the basic deployment working
+// We'll add the full backend routes after confirming deployment works
 
-// Error handling
-app.use(errorHandler);
-
-// Initialize database (non-blocking for serverless)
-initializeDatabase().catch(err => {
-  logger.error('Failed to initialize database:', err);
+// Survey start endpoint (temporary - using actual survey structure)
+app.post('/api/survey/start', (req, res) => {
+  console.log('Survey start request:', req.body);
+  
+  res.json({
+    sessionId: 'session-' + Date.now(),
+    firstQuestion: {
+      id: 'b1',
+      content: "Hi there! I'm Amanda from the Greater Hartford Arts Council. Thank you for taking the time to share your thoughts with us today. Your feedback is incredibly valuable in helping us better serve our community. What's your name?",
+      type: 'text-input',
+      required: true,
+      placeholder: 'Type your name here'
+    },
+    progress: 0
+  });
 });
 
-// Export for Vercel
+// Survey answer endpoint (temporary)
+app.post('/api/survey/answer', (req, res) => {
+  const { questionId, answer } = req.body;
+  console.log('Survey answer:', { questionId, answer });
+  
+  // Return next question based on the current question
+  if (questionId === 'b1') {
+    res.json({
+      nextQuestion: {
+        id: 'b2',
+        content: `Nice to meet you, ${answer}! How are you connected to the Greater Hartford Arts Council (GHAC)?`,
+        type: 'single-choice',
+        options: [
+          'Individual donor',
+          'Corporate donor',
+          'Board member',
+          'Volunteer',
+          'Partner organization',
+          'Community member',
+          'Other'
+        ],
+        required: true
+      },
+      progress: 5
+    });
+  } else {
+    // For now, just complete the survey
+    res.json({
+      nextQuestion: null,
+      progress: 100,
+      completed: true
+    });
+  }
+});
+
+// Catch-all for API routes
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint not found',
+    path: req.path,
+    method: req.method
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('API Error:', err);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: err.message
+  });
+});
+
 module.exports = app;
