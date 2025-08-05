@@ -128,17 +128,19 @@ const ResponseDetail: React.FC = () => {
         )}
         <InfoCard>
           <InfoLabel>Total Answers</InfoLabel>
-          <InfoValue>{answers.length}</InfoValue>
+          <InfoValue>{answers.filter(a => getQuestionType(a.question_id, a) !== 'dynamic-message').length}</InfoValue>
         </InfoCard>
       </InfoSection>
 
       <AnswersSection>
         <SectionTitle>Survey Answers</SectionTitle>
-        {answers.length === 0 ? (
-          <EmptyAnswers>No answers recorded yet</EmptyAnswers>
+        {answers.filter(a => getQuestionType(a.question_id, a) !== 'dynamic-message').length === 0 ? (
+          <EmptyAnswers>No meaningful answers recorded</EmptyAnswers>
         ) : (
           <AnswersList>
-            {answers.map((answer, index) => (
+            {answers
+              .filter(a => getQuestionType(a.question_id, a) !== 'dynamic-message')
+              .map((answer, index) => (
               <AnswerCard key={answer.id}>
                 <AnswerHeader>
                   <QuestionNumber>Q{index + 1}</QuestionNumber>
@@ -151,9 +153,12 @@ const ResponseDetail: React.FC = () => {
                 </QuestionText>
                 <AnswerContent>
                   {answer.video_url ? (
-                    <VideoLink href={answer.video_url} target="_blank" rel="noopener noreferrer">
-                      🎥 View Video Response →
-                    </VideoLink>
+                    <>
+                      <VideoLink href={answer.video_url} target="_blank" rel="noopener noreferrer">
+                        🎥 View Video Response →
+                      </VideoLink>
+                      <UrlText>{answer.video_url}</UrlText>
+                    </>
                   ) : (
                     <AnswerText>{formatComplexAnswer(answer)}</AnswerText>
                   )}
@@ -401,6 +406,13 @@ const AnswerTime = styled.div`
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.text.secondary};
   font-family: 'Nunito', sans-serif;
+`;
+
+const UrlText = styled.p`
+  margin: ${({ theme }) => theme.spacing.xs} 0;
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  color: ${({ theme }) => theme.colors.text.secondary};
+  word-break: break-all;
 `;
 
 export default ResponseDetail;

@@ -15,14 +15,15 @@ router.post('/videoask', async (req: Request, res: Response) => {
     });
 
     // Extract the webhook data - VideoAsk has a specific structure
-    const { 
+    const {
       event_type,
       event_id,
       interaction_id,
       contact,
-      form,
-      answers
+      form
     } = req.body;
+    // VideoAsk nests answers under contact
+    const answers = Array.isArray(contact?.answers) ? contact.answers : [];
 
     // Log specific event details
     logger.info('VideoAsk webhook event:', {
@@ -30,6 +31,7 @@ router.post('/videoask', async (req: Request, res: Response) => {
       event_id,
       interaction_id,
       form_id: form?.form_id,
+      form_share_id: form?.share_id,
       has_answers: !!answers,
       answers_count: answers?.length || 0
     });
@@ -39,25 +41,28 @@ router.post('/videoask', async (req: Request, res: Response) => {
       logger.info('VideoAsk answers:', JSON.stringify(answers, null, 2));
     }
 
-    // VideoAsk form IDs map to our question IDs
+    // VideoAsk form share IDs map to our survey-engine block IDs
     const questionIdMap: { [key: string]: string } = {
       'fcb71j5f2': 'b7',  // Personal story
       'fdmk80eer': 'b12'  // Magic wand
     };
+    logger.info('VideoAsk share-to-block mapping', { shareId: form?.share_id, mapping: questionIdMap });
 
     // Process the webhook only for form_response events
     if (event_type === 'form_response' && answers && answers.length > 0) {
       const videoAnswer = answers[0]; // Get the first answer
       
       // Extract video/audio response details
-      const mediaUrl = videoAnswer?.answer?.media_url;
-      const mediaType = videoAnswer?.answer?.media_type || videoAnswer?.type;
-      const transcript = videoAnswer?.answer?.transcript;
-      const duration = videoAnswer?.answer?.duration;
+      // VideoAsk may nest media info under answer or at top-level
+      const mediaUrl = videoAnswer?.answer?.media_url || videoAnswer?.media_url;
+      const mediaType = videoAnswer?.answer?.media_type || videoAnswer?.media_type || videoAnswer?.type;
+      const transcript = videoAnswer?.answer?.transcript || videoAnswer?.transcript;
+      const duration = videoAnswer?.answer?.duration || videoAnswer?.media_duration;
       
       logger.info('Processing VideoAsk response:', {
         formId: form?.form_id,
-        questionId: questionIdMap[form?.form_id] || 'unknown',
+        formShareId: form?.share_id,
+        questionId: questionIdMap[form?.share_id] || 'unknown',
         mediaUrl,
         mediaType,
         hasTranscript: !!transcript,
@@ -68,26 +73,20 @@ router.post('/videoask', async (req: Request, res: Response) => {
       const db = getDb();
       
       if (db && mediaUrl) {
-        // Update the most recent b7 or b12 answer with the video URL
-        const questionId = questionIdMap[form?.form_id] || 'b7'; // Default to b7 if unknown
+        // Determine which block to update based on form share ID
+        const questionId = questionIdMap[form?.share_id] || 'b7';
+        logger.info('VideoAsk will update answer block', { formShareId: form?.share_id, questionId, mediaUrl });
         
         const updateQuery = `
-          UPDATE answers 
-          SET 
+          UPDATE answers
+          SET
             video_url = $1,
             metadata = jsonb_set(
               COALESCE(metadata, '{}')::jsonb,
               '{webhookData}',
               $2::jsonb
             )
-          WHERE question_id IN (
-            SELECT id FROM questions WHERE block_id = $3
-          )
-          AND response_id = (
-            SELECT id FROM responses 
-            ORDER BY created_at DESC 
-            LIMIT 1
-          )
+          WHERE metadata->>'blockId' = $3
           RETURNING *
         `;
         
@@ -102,6 +101,7 @@ router.post('/videoask', async (req: Request, res: Response) => {
         };
         
         try {
+          logger.debug('VideoAsk updateQuery params', { mediaUrl, webhookData, questionId });
           const result = await db.query(updateQuery, [
             mediaUrl,
             JSON.stringify(webhookData),
@@ -114,7 +114,7 @@ router.post('/videoask', async (req: Request, res: Response) => {
               videoUrl: mediaUrl
             });
           } else {
-            logger.warn('No matching answer found to update with VideoAsk webhook data');
+            logger.warn('No matching answer found to update with VideoAsk webhook data', { questionId, mediaUrl });
           }
         } catch (updateError) {
           logger.error('Failed to update answer with VideoAsk webhook data:', updateError);
@@ -152,6 +152,10 @@ router.post('/videoask/test', (req: Request, res: Response) => {
     body: req.body,
     timestamp: new Date().toISOString()
   });
+  // Log nested answers for test clarity
+  if (req.body.contact?.answers) {
+    logger.info('Test webhook contact.answers:', JSON.stringify(req.body.contact.answers, null, 2));
+  }
   
   res.status(200).json({ 
     status: 'test received',

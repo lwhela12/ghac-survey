@@ -101,7 +101,7 @@ class SurveyService {
         answerText = data.answer.toString();
       }
 
-      // Always include block ID in metadata
+      // Always include block ID in metadata (blockId corresponds to our survey-engine block IDs)
       const metadataWithBlockId = {
         ...metadata,
         blockId: data.questionId
