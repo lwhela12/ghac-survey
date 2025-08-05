@@ -37,17 +37,17 @@ clerkApi.interceptors.request.use(async (config) => {
 export const clerkAdminApi = {
   // Response management
   getResponses: (page = 1, limit = 10) => 
-    clerkApi.get(`/clerk-admin/responses?page=${page}&limit=${limit}`),
+    clerkApi.get(`/api/clerk-admin/responses?page=${page}&limit=${limit}`),
   
   getResponseDetail: (responseId: string) => 
-    clerkApi.get(`/clerk-admin/responses/${responseId}`),
+    clerkApi.get(`/api/clerk-admin/responses/${responseId}`),
   
   exportResponses: (surveyId: string) => 
-    clerkApi.get(`/clerk-admin/export?surveyId=${surveyId}`, { responseType: 'blob' }),
+    clerkApi.get(`/api/clerk-admin/export?surveyId=${surveyId}`, { responseType: 'blob' }),
   
   // Analytics
   getAnalyticsSummary: () => 
-    clerkApi.get('/clerk-admin/analytics/summary?surveyId=11111111-1111-1111-1111-111111111111'),
+    clerkApi.get('/api/clerk-admin/analytics/summary?surveyId=11111111-1111-1111-1111-111111111111'),
 };
 
 export default clerkApi;
