@@ -2,16 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
-import { initializeDatabase } from '../src/database/initialize';
-import surveyRoutes from '../src/routes/survey.routes';
-import adminMockRoutes from '../src/routes/admin-mock.routes';
-import clerkAdminRoutes from '../src/routes/clerkAdmin.routes';
-import webhookRoutes from '../src/routes/webhook.routes';
-import { errorHandler } from '../src/middleware/errorHandler';
-import { logger } from '../src/utils/logger';
+import { initializeDatabase } from '../backend/src/database/initialize';
+import surveyRoutes from '../backend/src/routes/survey.routes';
+import adminMockRoutes from '../backend/src/routes/admin-mock.routes';
+import clerkAdminRoutes from '../backend/src/routes/clerkAdmin.routes';
+import webhookRoutes from '../backend/src/routes/webhook.routes';
+import { errorHandler } from '../backend/src/middleware/errorHandler';
+import { logger } from '../backend/src/utils/logger';
 
 // Load environment variables
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 

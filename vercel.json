@@ -4,16 +4,14 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "backend/api/index.ts": {
-      "runtime": "@vercel/node@3.0.7",
-      "maxDuration": 30,
-      "includeFiles": "backend/**"
+    "api/index.ts": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/backend/api"
+      "destination": "/api/index"
     }
   ]
 }

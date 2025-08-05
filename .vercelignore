@@ -52,5 +52,8 @@ backend/diagnose-*.sql
 **/dist/
 **/build/
 
+# Don't ignore backend source files needed by api
+!backend/src/**
+
 # TypeScript cache
 *.tsbuildinfo
