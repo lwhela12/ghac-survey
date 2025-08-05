@@ -64,7 +64,7 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
   // Touch support for mobile
   const [touchItem, setTouchItem] = useState<number | null>(null);
 
-  const handleTouchStart = (e: React.TouchEvent, index: number) => {
+  const handleTouchStart = (_e: React.TouchEvent, index: number) => {
     setTouchItem(index);
   };
 

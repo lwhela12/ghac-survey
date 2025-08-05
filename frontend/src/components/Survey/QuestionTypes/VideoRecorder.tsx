@@ -60,7 +60,7 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
       </ButtonGroup>
       
       <InfoText>
-        💡 After recording your response, click "Continue" to proceed
+        💡 After recording your response, click &quot;Continue&quot; to proceed
       </InfoText>
     </Container>
   );

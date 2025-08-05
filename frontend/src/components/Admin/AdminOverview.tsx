@@ -101,8 +101,8 @@ const AdminOverview: React.FC = () => {
 
           <ActionButton onClick={async () => {
             try {
-              const blob = await clerkAdminApi.exportResponses('11111111-1111-1111-1111-111111111111');
-              const url = window.URL.createObjectURL(blob);
+              const response = await clerkAdminApi.exportResponses('11111111-1111-1111-1111-111111111111');
+              const url = window.URL.createObjectURL(response.data);
               const a = document.createElement('a');
               a.href = url;
               a.download = `ghac-survey-export-${new Date().toISOString().split('T')[0]}.csv`;

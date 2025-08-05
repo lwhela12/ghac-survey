@@ -24,7 +24,15 @@
     "migrate": "cd backend && npm run migrate",
     "seed": "cd backend && npm run seed",
     "reset": "docker-compose down -v && npm run dev",
-    "health": "curl http://localhost:4001/health && echo ' - Backend OK' && curl http://localhost:4000 && echo ' - Frontend OK'"
+    "health": "curl http://localhost:4001/health && echo ' - Backend OK' && curl http://localhost:4000 && echo ' - Frontend OK'",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:fix": "cd backend && npm run lint:fix && cd ../frontend && npm run lint:fix",
+    "typecheck": "npm run typecheck:backend && npm run typecheck:frontend",
+    "typecheck:backend": "cd backend && npm run typecheck",
+    "typecheck:frontend": "cd frontend && npm run typecheck",
+    "check-all": "npm run typecheck && npm run lint"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

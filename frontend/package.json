@@ -23,7 +23,9 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
+    "check-all": "npm run typecheck && npm run lint",
     "preview": "vite preview"
   },
   "devDependencies": {

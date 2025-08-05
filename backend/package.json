@@ -11,7 +11,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit",
+    "check-all": "npm run typecheck && npm run lint",
     "migrate": "ts-node src/database/migrate.ts",
     "seed": "ts-node src/database/seed.ts"
   },

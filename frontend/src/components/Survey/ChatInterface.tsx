@@ -1,5 +1,5 @@
 // frontend/src/components/Survey/ChatInterface.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
@@ -232,8 +232,8 @@ const ChatInterface: React.FC = () => {
               <WelcomeCard>
                 <WelcomePattern />
                 <WelcomeContent>
-                  <WelcomeTitle>Let's talk about arts & culture</WelcomeTitle>
-                  <WelcomeSubtitle>Your voice shapes Hartford's creative future</WelcomeSubtitle>
+                  <WelcomeTitle>Let&apos;s talk about arts & culture</WelcomeTitle>
+                  <WelcomeSubtitle>Your voice shapes Hartford&apos;s creative future</WelcomeSubtitle>
                   <StartButton onClick={() => dispatch(startSurvey(''))}>
                     <ButtonIcon>🎨</ButtonIcon>
                     Begin the Conversation

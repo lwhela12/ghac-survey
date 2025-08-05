@@ -1,5 +1,5 @@
 // frontend/src/components/Survey/ChatMessage.tsx
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import amandaIcon from '../../assets/images/Amanda_icon.png';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -20,9 +20,7 @@ interface ChatMessageProps {
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const dispatch = useAppDispatch();
   const currentQuestion = useAppSelector(state => state.survey.currentQuestion);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoCompleted, setVideoCompleted] = React.useState(false);
-  const [isVideoCompleted, setIsVideoCompleted] = React.useState(false);
+  const [videoCompleted] = React.useState(false);
 
   useEffect(() => {
     // Disabled autoplay for testing
