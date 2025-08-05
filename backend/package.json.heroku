@@ -1,0 +1,14 @@
+{
+  "name": "ghac-survey-backend",
+  "version": "1.0.0",
+  "description": "GHAC Survey Backend",
+  "scripts": {
+    "postinstall": "cd backend && npm install",
+    "start": "cd backend && npm start",
+    "build": "cd backend && npm run build"
+  },
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
+  }
+}
