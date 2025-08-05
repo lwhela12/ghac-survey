@@ -1,7 +1,7 @@
 {
   "version": 2,
   "framework": null,
-  "buildCommand": "./scripts/prepare-vercel-api.sh && cd frontend && npm install && npm run build",
+  "buildCommand": "node scripts/prepare-api.js && cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.js": {
