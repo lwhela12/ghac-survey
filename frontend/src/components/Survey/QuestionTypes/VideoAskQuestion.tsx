@@ -226,7 +226,7 @@ const LoadingSpinner = styled.div`
 const LoadingText = styled.p`
   margin-top: ${({ theme }) => theme.spacing.lg};
   color: ${({ theme }) => theme.colors.text.secondary};
-  font-size: ${({ theme }) => theme.fontSizes.md};
+  font-size: ${({ theme }) => theme.fontSizes.base};
 `;
 
 const VideoAskWrapper = styled.div<{ $isLoading: boolean }>`
@@ -262,7 +262,7 @@ const SkipButton = styled.button`
   border: 1px solid ${({ theme }) => theme.colors.border};
   padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.xl};
   border-radius: ${({ theme }) => theme.borderRadius.full};
-  font-size: ${({ theme }) => theme.fontSizes.md};
+  font-size: ${({ theme }) => theme.fontSizes.base};
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
   

@@ -38,7 +38,7 @@ const SingleChoice: React.FC<SingleChoiceProps> = ({ question, onAnswer, disable
     } else if (option.action === 'close') {
       // Submit the close action
       setTimeout(() => {
-        onAnswer({ action: 'close' });
+        onAnswer('close');
       }, 300);
     } else {
       // Normal answer submission

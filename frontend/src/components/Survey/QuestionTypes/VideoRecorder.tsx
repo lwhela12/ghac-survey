@@ -10,9 +10,7 @@ interface VideoRecorderProps {
 
 const VideoRecorder: React.FC<VideoRecorderProps> = ({ 
   onRecordingComplete, 
-  onCancel, 
-  maxDuration = 90,
-  question 
+  onCancel
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);

@@ -28,6 +28,7 @@ export type QuestionType =
   | 'quick-reply'
   | 'message-button'
   | 'text-input'
+  | 'text-input-followup'
   | 'single-choice'
   | 'multi-choice'
   | 'scale'
@@ -37,7 +38,8 @@ export type QuestionType =
   | 'yes-no'
   | 'contact-form'
   | 'demographics'
-  | 'final-message';
+  | 'final-message'
+  | 'dynamic-message';
 
 export interface Option {
   id: string;

@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { useClerk, useUser, useAuth } from '@clerk/clerk-react';
 import { setClerkGetToken } from '../services/clerkApi';
 import AdminOverview from '../components/Admin/AdminOverview';

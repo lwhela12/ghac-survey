@@ -33,16 +33,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     // }
   }, [message.question, videoCompleted]);
 
-  const handleVideoEnd = () => {
-    if (!videoCompleted && message.question) {
-      setVideoCompleted(true);
-      // Submit the answer to advance to next question
-      dispatch(submitAnswer({ 
-        questionId: message.question.id, 
-        answer: 'watched' 
-      }));
-    }
-  };
 
   const formatTime = (date: string) => {
     const d = new Date(date);
@@ -54,16 +44,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     return `${displayHours}:${displayMinutes} ${ampm}`;
   };
 
-  const handleSkipVideo = () => {
-    if (!videoCompleted && message.question) {
-      setVideoCompleted(true);
-      // Submit the answer to advance to next question
-      dispatch(submitAnswer({ 
-        questionId: message.question.id, 
-        answer: 'skipped' 
-      }));
-    }
-  };
 
   const renderContent = () => {
     // For video-autoplay with VideoAsk, don't render anything - it's handled separately
@@ -92,8 +72,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     return <Content>{message.content}</Content>;
   };
 
-  // Check if this is a video message
-  const isVideoMessage = message.question?.type === 'video-autoplay' && message.question?.videoUrl;
   const isVideoAskMessage = message.question?.type === 'videoask';
   const isVideoAutoplayMessage = message.question?.type === 'video-autoplay';
 
@@ -318,46 +296,6 @@ const Timestamp = styled.span<{ type: 'bot' | 'user' | 'system' }>`
   opacity: 0.7;
 `;
 
-const VideoContainer = styled.div`
-  width: 280px;
-  aspect-ratio: 9 / 16;
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  overflow: hidden;
-  background: #000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: transform ${({ theme }) => theme.transitions.fast};
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  }
-  
-  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    width: 200px;
-  }
-`;
-
-const Video = styled.video`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const SkipButton = styled.button`
-  background: none;
-  border: none;
-  color: ${({ theme }) => theme.colors.text.secondary};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  cursor: pointer;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  margin-top: ${({ theme }) => theme.spacing.sm};
-  transition: all ${({ theme }) => theme.transitions.fast};
-  
-  &:hover {
-    color: ${({ theme }) => theme.colors.primary};
-    text-decoration: underline;
-  }
-`;
 
 const VideoAskWrapper = styled.div`
   margin-left: 48px;
@@ -377,23 +315,5 @@ const SemanticContent = styled.pre`
   letter-spacing: 0.1em;
 `;
 
-const VideoAskContainer = styled.div`
-  width: 280px;
-  aspect-ratio: 9 / 16;
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  overflow: hidden;
-  background: #000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  
-  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    width: 200px;
-  }
-`;
-
-const VideoAskEmbed = styled.iframe`
-  width: 100%;
-  height: 100%;
-  border: none;
-`;
 
 export default ChatMessage;

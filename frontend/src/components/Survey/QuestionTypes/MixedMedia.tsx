@@ -163,12 +163,6 @@ const OptionLabel = styled.div`
   text-align: center;
 `;
 
-const SubLabel = styled.div`
-  font-size: ${({ theme }) => theme.fontSizes.xs};
-  font-weight: ${({ theme }) => theme.fontWeights.normal};
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 2px;
-`;
 
 const TextArea = styled.textarea`
   width: 100%;

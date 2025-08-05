@@ -63,11 +63,9 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
 
   // Touch support for mobile
   const [touchItem, setTouchItem] = useState<number | null>(null);
-  const [touchY, setTouchY] = useState<number>(0);
 
   const handleTouchStart = (e: React.TouchEvent, index: number) => {
     setTouchItem(index);
-    setTouchY(e.touches[0].clientY);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -239,7 +237,7 @@ const SubmitButton = styled.button`
   transition: all ${({ theme }) => theme.transitions.fast};
   
   &:hover:not(:disabled) {
-    background-color: ${({ theme }) => theme.colors.primaryDark};
+    background-color: #003d7a;
     transform: translateY(-1px);
   }
   
