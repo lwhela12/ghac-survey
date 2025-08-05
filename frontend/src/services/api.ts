@@ -66,6 +66,37 @@ api.interceptors.response.use(
 // Survey API
 let currentSessionId: string | null = null;
 
+// Session persistence helpers
+const SESSION_STORAGE_KEY = 'ghac_survey_session';
+const SESSION_EXPIRY_KEY = 'ghac_survey_expiry';
+
+const saveSession = (sessionId: string) => {
+  const expiry = new Date();
+  expiry.setHours(expiry.getHours() + 24); // 24 hour expiry
+  localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  localStorage.setItem(SESSION_EXPIRY_KEY, expiry.toISOString());
+};
+
+const getStoredSession = (): string | null => {
+  const sessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+  const expiry = localStorage.getItem(SESSION_EXPIRY_KEY);
+  
+  if (!sessionId || !expiry) return null;
+  
+  // Check if session has expired
+  if (new Date(expiry) < new Date()) {
+    clearStoredSession();
+    return null;
+  }
+  
+  return sessionId;
+};
+
+const clearStoredSession = () => {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+  localStorage.removeItem(SESSION_EXPIRY_KEY);
+};
+
 export const surveyApi = {
   startSurvey: async (name: string) => {
     console.log('Starting survey with name:', name);
@@ -77,11 +108,43 @@ export const surveyApi = {
       });
       console.log('Survey start response:', response.data);
       currentSessionId = response.data.sessionId;
+      
+      // Save session to localStorage
+      saveSession(response.data.sessionId);
+      
       return response.data;
     } catch (error) {
       console.error('Survey start error:', error);
       throw error;
     }
+  },
+  
+  checkExistingSession: async (): Promise<{ exists: boolean; sessionId?: string; state?: any }> => {
+    const storedSessionId = getStoredSession();
+    
+    if (!storedSessionId) {
+      return { exists: false };
+    }
+    
+    try {
+      const response = await api.get(`/api/survey/state/${storedSessionId}`);
+      currentSessionId = storedSessionId;
+      return {
+        exists: true,
+        sessionId: storedSessionId,
+        state: response.data
+      };
+    } catch (error) {
+      // Session no longer valid on server
+      clearStoredSession();
+      return { exists: false };
+    }
+  },
+  
+  resumeSurvey: async (sessionId: string) => {
+    currentSessionId = sessionId;
+    const response = await api.get(`/api/survey/state/${sessionId}`);
+    return response.data;
   },
 
   submitAnswer: async (questionId: string, answer: any) => {
@@ -102,6 +165,10 @@ export const surveyApi = {
       sessionId: currentSessionId,
     });
     currentSessionId = null;
+    
+    // Clear stored session on completion
+    clearStoredSession();
+    
     return response.data;
   },
 

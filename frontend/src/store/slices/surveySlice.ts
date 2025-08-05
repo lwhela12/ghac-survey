@@ -29,6 +29,22 @@ const initialState: SurveySliceState = {
 };
 
 // Async thunks
+export const checkExistingSession = createAsyncThunk(
+  'survey/checkExistingSession',
+  async () => {
+    const response = await surveyApi.checkExistingSession();
+    return response;
+  }
+);
+
+export const resumeSurvey = createAsyncThunk(
+  'survey/resume',
+  async (sessionId: string) => {
+    const response = await surveyApi.resumeSurvey(sessionId);
+    return { sessionId, ...response };
+  }
+);
+
 export const startSurvey = createAsyncThunk(
   'survey/start',
   async (name: string) => {
@@ -170,6 +186,39 @@ const surveySlice = createSlice({
       .addCase(completeSurvey.fulfilled, (state) => {
         state.currentQuestion = null;
         state.progress = 100;
+      })
+      // Resume survey
+      .addCase(resumeSurvey.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(resumeSurvey.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.sessionId = action.payload.sessionId;
+        state.currentQuestion = action.payload.currentQuestion;
+        state.progress = action.payload.progress || 0;
+        
+        // Add current question to messages if it exists
+        if (action.payload.currentQuestion) {
+          const questionCopy = JSON.parse(JSON.stringify(action.payload.currentQuestion));
+          state.messages.push({
+            id: `bot-resumed-${Date.now()}`,
+            type: 'bot',
+            content: "Welcome back! Let's continue where you left off.",
+            timestamp: new Date().toISOString(),
+          });
+          state.messages.push({
+            id: `bot-${Date.now()}-${action.payload.currentQuestion.id}`,
+            type: 'bot',
+            content: questionCopy.content,
+            question: questionCopy,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      })
+      .addCase(resumeSurvey.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || 'Failed to resume survey';
       });
   },
 });
