@@ -1,7 +1,7 @@
 // frontend/src/components/Survey/ChatMessage.tsx
 import React, { useRef, useEffect } from 'react';
 import styled, { css, keyframes } from 'styled-components';
-import amandaIcon from '../../../assets/images/Amanda_icon.png';
+import amandaIcon from '../../assets/images/Amanda_icon.png';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { submitAnswer } from '../../store/slices/surveySlice';
 import VideoAskQuestion from './QuestionTypes/VideoAskQuestion';

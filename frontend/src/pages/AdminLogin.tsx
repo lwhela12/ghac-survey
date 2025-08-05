@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { login } from '../store/slices/adminSlice';
-import ghacLogo from '../../assets/images/GHAC.jpg';
+import ghacLogo from '../assets/images/GHAC.jpg';
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();

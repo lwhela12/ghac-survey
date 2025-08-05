@@ -2,22 +2,19 @@ import React, { useEffect } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { logout } from '../store/slices/adminSlice';
 import { useClerk, useUser, useAuth } from '@clerk/clerk-react';
 import { setClerkGetToken } from '../services/clerkApi';
 import AdminOverview from '../components/Admin/AdminOverview';
 import ResponsesList from '../components/Admin/ResponsesList';
 import ResponseDetail from '../components/Admin/ResponseDetail';
 import Analytics from '../components/Admin/Analytics';
-import ghacLogo from '../../assets/images/GHAC.jpg';
+import ghacLogo from '../assets/images/GHAC.jpg';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const { signOut } = useClerk();
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
-  const { user } = useAppSelector((state) => state.admin);
 
   // Initialize Clerk API with getToken function
   useEffect(() => {

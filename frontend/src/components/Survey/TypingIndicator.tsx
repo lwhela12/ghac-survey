@@ -1,7 +1,7 @@
 // frontend/src/components/Survey/TypingIndicator.tsx
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
-import amandaIcon from '../../../assets/images/Amanda_icon.png';
+import amandaIcon from '../../assets/images/Amanda_icon.png';
 
 const TypingIndicator: React.FC = () => {
   return (

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { surveyApi } from '../../services/api';
-import { Question, SurveyState } from '../../types/survey';
+import { Question } from '../../types/survey';
 
 interface SurveySliceState {
   sessionId: string | null;
@@ -57,7 +57,7 @@ const surveySlice = createSlice({
   name: 'survey',
   initialState,
   reducers: {
-    initializeSurvey: (state) => {
+    initializeSurvey: () => {
       // Remove default welcome message - we'll use b0 instead
     },
     addBotMessage: (state, action: PayloadAction<{ content: string; question?: Question }>) => {

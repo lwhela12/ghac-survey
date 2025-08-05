@@ -4,12 +4,12 @@ import styled from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import ChatInterface from '../components/Survey/ChatInterface';
 import ProgressBar from '../components/Survey/ProgressBar';
-import { startSurvey, initializeSurvey } from '../store/slices/surveySlice';
-import ghacLogo from '../../assets/images/GHAC.jpg';
+import { initializeSurvey } from '../store/slices/surveySlice';
+import ghacLogo from '../assets/images/GHAC.jpg';
 
 const SurveyPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { sessionId, progress, messages } = useAppSelector((state) => state.survey);
+  const { sessionId, progress } = useAppSelector((state) => state.survey);
 
   useEffect(() => {
     dispatch(initializeSurvey());

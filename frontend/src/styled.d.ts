@@ -5,8 +5,16 @@ declare module 'styled-components' {
     colors: {
       primary: string;
       secondary: string;
+      accent: {
+        coral: string;
+        purple: string;
+        teal: string;
+        yellow: string;
+        pink: string;
+      };
       background: string;
       surface: string;
+      surfaceAlt: string;
       text: {
         primary: string;
         secondary: string;
@@ -14,17 +22,27 @@ declare module 'styled-components' {
         inverse: string;
       };
       border: string;
+      borderLight: string;
       error: string;
       success: string;
       warning: string;
       chatBubble: {
         bot: string;
+        botText: string;
         user: string;
         userText: string;
+      };
+      gradients: {
+        primary: string;
+        secondary: string;
+        artistic: string;
+        sunset: string;
+        ocean: string;
       };
     };
     fonts: {
       primary: string;
+      display: string;
     };
     fontSizes: {
       xs: string;
@@ -35,8 +53,10 @@ declare module 'styled-components' {
       '2xl': string;
       '3xl': string;
       '4xl': string;
+      '5xl': string;
     };
     fontWeights: {
+      light: number;
       regular: number;
       medium: number;
       semibold: number;
@@ -50,12 +70,14 @@ declare module 'styled-components' {
       xl: string;
       '2xl': string;
       '3xl': string;
+      '4xl': string;
     };
     borderRadius: {
       sm: string;
       md: string;
       lg: string;
       xl: string;
+      '2xl': string;
       full: string;
     };
     breakpoints: {
@@ -74,6 +96,13 @@ declare module 'styled-components' {
       md: string;
       lg: string;
       xl: string;
+      inner: string;
+      artistic: string;
+    };
+    animations: {
+      bounce: string;
+      pulse: string;
+      float: string;
     };
   }
 }

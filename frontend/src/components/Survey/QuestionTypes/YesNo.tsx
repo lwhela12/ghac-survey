@@ -16,7 +16,7 @@ const YesNo: React.FC<YesNoProps> = ({ question, onAnswer, disabled }) => {
           key={option.id}
           onClick={() => onAnswer(option.value)}
           disabled={disabled}
-          $variant={option.value === true || option.value === 'true' || option.value === 'yes' ? 'primary' : 'secondary'}
+          $variant={option.value === 'true' || option.value === 'yes' || option.value === 'Yes' ? 'primary' : 'secondary'}
         >
           {option.label}
         </Button>
