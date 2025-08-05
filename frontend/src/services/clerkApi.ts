@@ -1,10 +1,9 @@
 import axios from 'axios';
 
-// Use VITE_API_URL if set, otherwise use window.location.origin for production
-const API_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
-    ? window.location.origin 
-    : 'http://localhost:4001');
+// Use VITE_API_URL if defined (including empty string), otherwise use localhost for dev
+const API_URL = import.meta.env.VITE_API_URL !== undefined 
+  ? import.meta.env.VITE_API_URL 
+  : 'http://localhost:4001';
 
 const clerkApi = axios.create({
   baseURL: API_URL,
