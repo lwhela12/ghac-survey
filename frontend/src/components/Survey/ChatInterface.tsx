@@ -59,7 +59,7 @@ const ChatInterface: React.FC = () => {
     setTimeout(scrollToBottom, delay);
   }, [messages, isTyping, currentQuestion]);
 
-  // Auto-advance for dynamic-message questions
+  // Auto-advance for dynamic-message questions and handle final-message redirect
   useEffect(() => {
     if (currentQuestion?.type === 'dynamic-message' && !isLoading) {
       const delay = currentQuestion.autoAdvanceDelay || 1500;
@@ -67,6 +67,17 @@ const ChatInterface: React.FC = () => {
         handleAnswer('acknowledged');
       }, delay);
       return () => clearTimeout(timer);
+    }
+    
+    // Handle final-message redirect
+    if (currentQuestion?.type === 'final-message' && !isLoading) {
+      if (currentQuestion.redirect) {
+        const redirectDelay = currentQuestion.redirectDelay || 5000;
+        const timer = setTimeout(() => {
+          window.location.href = currentQuestion.redirect!;
+        }, redirectDelay);
+        return () => clearTimeout(timer);
+      }
     }
   }, [currentQuestion, isLoading]);
 

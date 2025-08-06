@@ -13,7 +13,6 @@ import Ranking from './QuestionTypes/Ranking';
 import YesNo from './QuestionTypes/YesNo';
 import ContactForm from './QuestionTypes/ContactForm';
 import Demographics from './QuestionTypes/Demographics';
-import FinalMessage from './QuestionTypes/FinalMessage';
 
 interface QuestionRendererProps {
   question: Question;
@@ -69,10 +68,8 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       return <Demographics question={question} onAnswer={onAnswer} disabled={disabled} />;
     
     case 'final-message':
-      return <FinalMessage question={question} onAnswer={onAnswer} />;
-    
     case 'dynamic-message':
-      // Dynamic messages are handled directly in ChatInterface
+      // Final and dynamic messages are handled directly in ChatInterface
       return null;
     
     default:

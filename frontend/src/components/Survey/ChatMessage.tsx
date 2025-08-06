@@ -49,6 +49,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       return null;
     }
     
+    // Check if content contains a markdown image/gif
+    const gifMatch = message.content.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+    if (gifMatch) {
+      const altText = gifMatch[1];
+      const imageUrl = gifMatch[2];
+      
+      // Check if it's a GIF
+      if (imageUrl.includes('.gif') || imageUrl.includes('giphy')) {
+        return (
+          <GifContainer>
+            <GifImage src={imageUrl} alt={altText} />
+          </GifContainer>
+        );
+      }
+    }
+    
     // Check if the message has links from the question object
     if (message.question?.links && message.question.links.length > 0) {
       let content = message.content;
@@ -313,5 +329,20 @@ const SemanticContent = styled.pre`
   letter-spacing: 0.1em;
 `;
 
+const GifContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.sm};
+  max-width: 300px;
+  margin: 0 auto;
+`;
+
+const GifImage = styled.img`
+  max-width: 100%;
+  height: auto;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  box-shadow: ${({ theme }) => theme.shadows.md};
+`;
 
 export default ChatMessage;

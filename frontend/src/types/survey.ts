@@ -20,6 +20,8 @@ export interface Question {
   links?: Array<{ text: string; url: string }>;
   autoAdvance?: boolean;
   autoAdvanceDelay?: number;
+  redirect?: string;
+  redirectDelay?: number;
 }
 
 export type QuestionType =

@@ -7,7 +7,10 @@ interface QuestionStats {
   questionText: string;
   questionType: string;
   totalResponses: number;
-  answerDistribution: Record<string, number>;
+  answerDistribution: Record<string, {
+    count: number;
+    percentage: number;
+  }>;
 }
 
 const Analytics: React.FC = () => {
@@ -26,44 +29,23 @@ const Analytics: React.FC = () => {
   const loadAnalytics = async () => {
     try {
       setIsLoading(true);
-      const response = await clerkAdminApi.getAnalyticsSummary();
-      const data = response.data;
+      
+      // Load summary statistics
+      const summaryResponse = await clerkAdminApi.getAnalyticsSummary();
+      const summaryData = summaryResponse.data;
       setStats({
-        totalResponses: data.totalResponses || 0,
-        completedResponses: data.completedResponses || 0,
-        avgCompletionTime: data.avgCompletionTime || 0,
+        totalResponses: summaryData.totalResponses || 0,
+        completedResponses: summaryData.completedResponses || 0,
+        avgCompletionTime: summaryData.avgCompletionTime || 0,
       });
       
-      // In a real implementation, we'd have an endpoint for question-level stats
-      // For now, we'll show placeholder data
-      setQuestionStats([
-        {
-          questionId: 'b2',
-          questionText: 'How are you connected to the Greater Hartford Arts Council (GHAC)?',
-          questionType: 'single-choice',
-          totalResponses: stats.completedResponses,
-          answerDistribution: {
-            'Individual donor': 35,
-            'Corporate donor': 20,
-            'Foundation representative': 15,
-            'Artist/Creative': 20,
-            'Other': 10,
-          },
-        },
-        {
-          questionId: 'b8',
-          questionText: 'Overall, how satisfied are you with GHAC\'s work?',
-          questionType: 'scale',
-          totalResponses: stats.completedResponses,
-          answerDistribution: {
-            'Very Satisfied': 45,
-            'Satisfied': 30,
-            'Neutral': 15,
-            'Dissatisfied': 7,
-            'Very Dissatisfied': 3,
-          },
-        },
-      ]);
+      // Load question-level statistics
+      const questionResponse = await clerkAdminApi.getQuestionStats();
+      const questionData = questionResponse.data;
+      
+      if (questionData.questionStats && questionData.questionStats.length > 0) {
+        setQuestionStats(questionData.questionStats);
+      }
     } catch (error) {
       console.error('Failed to load analytics:', error);
     } finally {
@@ -113,12 +95,11 @@ const Analytics: React.FC = () => {
       </Header>
 
       <MetricsGrid>
-        <MetricCard highlight>
+        <MetricCard $highlight>
           <MetricIcon>📊</MetricIcon>
           <MetricContent>
             <MetricValue>{stats.totalResponses}</MetricValue>
             <MetricLabel>Total Responses</MetricLabel>
-            <MetricChange positive>+12% from last month</MetricChange>
           </MetricContent>
         </MetricCard>
 
@@ -150,62 +131,49 @@ const Analytics: React.FC = () => {
         </MetricCard>
       </MetricsGrid>
 
-      <InsightsSection>
-        <SectionTitle>Key Insights</SectionTitle>
-        <InsightsGrid>
-          <InsightCard>
-            <InsightIcon>💡</InsightIcon>
-            <InsightContent>
-              <InsightTitle>High Engagement</InsightTitle>
-              <InsightText>
-                {completionRate}% of respondents complete the survey, which is above the industry average of 65%.
-              </InsightText>
-            </InsightContent>
-          </InsightCard>
-
-          <InsightCard>
-            <InsightIcon>🎯</InsightIcon>
-            <InsightContent>
-              <InsightTitle>Meeting Time Goals</InsightTitle>
-              <InsightText>
-                Average completion time of {stats.avgCompletionTime.toFixed(1)} minutes meets the 10-minute target.
-              </InsightText>
-            </InsightContent>
-          </InsightCard>
-
-          <InsightCard>
-            <InsightIcon>📈</InsightIcon>
-            <InsightContent>
-              <InsightTitle>Growth Trend</InsightTitle>
-              <InsightText>
-                Response rate has increased by 12% compared to the previous period.
-              </InsightText>
-            </InsightContent>
-          </InsightCard>
-        </InsightsGrid>
-      </InsightsSection>
-
       <QuestionAnalysis>
         <SectionTitle>Question-Level Analysis</SectionTitle>
-        {questionStats.map((question) => (
-          <QuestionCard key={question.questionId}>
-            <QuestionHeader>
-              <QuestionText>{question.questionText}</QuestionText>
-              <ResponseCount>{question.totalResponses} responses</ResponseCount>
-            </QuestionHeader>
-            <DistributionChart>
-              {Object.entries(question.answerDistribution).map(([answer, percentage]) => (
-                <DistributionRow key={answer}>
-                  <AnswerLabel>{answer}</AnswerLabel>
-                  <BarContainer>
-                    <Bar width={percentage} />
-                    <Percentage>{percentage}%</Percentage>
-                  </BarContainer>
-                </DistributionRow>
-              ))}
-            </DistributionChart>
-          </QuestionCard>
-        ))}
+        {questionStats.length === 0 ? (
+          <EmptyState>
+            <EmptyStateIcon>📊</EmptyStateIcon>
+            <EmptyStateText>No response data available yet.</EmptyStateText>
+            <EmptyStateSubtext>Analytics will appear here once surveys are completed.</EmptyStateSubtext>
+          </EmptyState>
+        ) : (
+          questionStats
+            .filter(q => q.totalResponses > 0)
+            .sort((a, b) => b.totalResponses - a.totalResponses)
+            .slice(0, 10) // Show top 10 questions by response count
+            .map((question) => (
+              <QuestionCard key={question.questionId}>
+                <QuestionHeader>
+                  <div>
+                    <QuestionBadge type={question.questionType}>
+                      {question.questionType.replace('-', ' ')}
+                    </QuestionBadge>
+                    <QuestionText>{question.questionText}</QuestionText>
+                  </div>
+                  <ResponseCount>{question.totalResponses} responses</ResponseCount>
+                </QuestionHeader>
+                <DistributionChart>
+                  {Object.entries(question.answerDistribution)
+                    .sort((a, b) => b[1].percentage - a[1].percentage)
+                    .map(([answer, data]) => (
+                      <DistributionRow key={answer}>
+                        <AnswerLabel title={answer}>{answer}</AnswerLabel>
+                        <BarContainer>
+                          <Bar width={data.percentage} />
+                          <PercentageContainer>
+                            <Percentage>{data.percentage}%</Percentage>
+                            <ResponseCount>({data.count})</ResponseCount>
+                          </PercentageContainer>
+                        </BarContainer>
+                      </DistributionRow>
+                    ))}
+                </DistributionChart>
+              </QuestionCard>
+            ))
+        )}
       </QuestionAnalysis>
     </Container>
   );
@@ -284,9 +252,9 @@ const MetricsGrid = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing['3xl']};
 `;
 
-const MetricCard = styled.div<{ highlight?: boolean }>`
-  background: ${({ theme, highlight }) => 
-    highlight ? 'linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)' : theme.colors.background};
+const MetricCard = styled.div<{ $highlight?: boolean }>`
+  background: ${({ theme, $highlight }) => 
+    $highlight ? 'linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)' : theme.colors.background};
   padding: ${({ theme }) => theme.spacing.xl};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   box-shadow: ${({ theme }) => theme.shadows.sm};
@@ -295,7 +263,7 @@ const MetricCard = styled.div<{ highlight?: boolean }>`
   gap: ${({ theme }) => theme.spacing.lg};
   transition: all ${({ theme }) => theme.transitions.normal};
   
-  ${({ highlight }) => highlight && `
+  ${({ $highlight }) => $highlight && `
     color: white;
     
     div {
@@ -336,58 +304,10 @@ const MetricSubtext = styled.div`
   font-family: 'Nunito', sans-serif;
 `;
 
-const MetricChange = styled.div<{ positive?: boolean }>`
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  color: ${({ positive }) => positive ? '#22c55e' : '#ef4444'};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
-  font-family: 'Nunito', sans-serif;
-`;
-
-const InsightsSection = styled.section`
-  margin-bottom: ${({ theme }) => theme.spacing['3xl']};
-`;
-
 const SectionTitle = styled.h2`
   color: ${({ theme }) => theme.colors.text.primary};
   font-size: ${({ theme }) => theme.fontSizes.xl};
   margin: 0 0 ${({ theme }) => theme.spacing.lg} 0;
-  font-family: 'Nunito', sans-serif;
-`;
-
-const InsightsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: ${({ theme }) => theme.spacing.lg};
-`;
-
-const InsightCard = styled.div`
-  background: ${({ theme }) => theme.colors.background};
-  padding: ${({ theme }) => theme.spacing.lg};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  box-shadow: ${({ theme }) => theme.shadows.sm};
-  display: flex;
-  gap: ${({ theme }) => theme.spacing.md};
-  border-left: 4px solid #4A90E2;
-`;
-
-const InsightIcon = styled.div`
-  font-size: 32px;
-  line-height: 1;
-`;
-
-const InsightContent = styled.div``;
-
-const InsightTitle = styled.h3`
-  color: ${({ theme }) => theme.colors.text.primary};
-  font-size: ${({ theme }) => theme.fontSizes.lg};
-  margin: 0 0 ${({ theme }) => theme.spacing.sm} 0;
-  font-family: 'Nunito', sans-serif;
-`;
-
-const InsightText = styled.p`
-  color: ${({ theme }) => theme.colors.text.secondary};
-  font-size: ${({ theme }) => theme.fontSizes.base};
-  margin: 0;
   font-family: 'Nunito', sans-serif;
 `;
 
@@ -437,10 +357,15 @@ const DistributionRow = styled.div`
 `;
 
 const AnswerLabel = styled.div`
-  width: 150px;
+  min-width: 200px;
+  max-width: 300px;
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.text.primary};
   font-family: 'Nunito', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: ${({ theme }) => theme.spacing.md};
 `;
 
 const BarContainer = styled.div`
@@ -448,20 +373,92 @@ const BarContainer = styled.div`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.md};
+  position: relative;
 `;
 
 const Bar = styled.div<{ width: number }>`
-  height: 24px;
-  background: linear-gradient(90deg, #4A90E2 0%, #357ABD 100%);
+  height: 28px;
+  background: ${({ width }) => {
+    if (width > 60) return 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)';
+    if (width > 30) return 'linear-gradient(90deg, #4A90E2 0%, #357ABD 100%)';
+    if (width > 10) return 'linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%)';
+    return 'linear-gradient(90deg, #f87171 0%, #ef4444 100%)';
+  }};
   border-radius: ${({ theme }) => theme.borderRadius.md};
-  width: ${({ width }) => `${width}%`};
+  width: ${({ width }) => `${Math.max(width, 2)}%`};
+  min-width: 2%;
   transition: width ${({ theme }) => theme.transitions.normal};
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+const PercentageContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm};
+  min-width: 80px;
 `;
 
 const Percentage = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.sm};
-  color: ${({ theme }) => theme.colors.text.secondary};
+  color: ${({ theme }) => theme.colors.text.primary};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  font-family: 'Nunito', sans-serif;
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: ${({ theme }) => theme.spacing['3xl']};
+  background: ${({ theme }) => theme.colors.background};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
+`;
+
+const EmptyStateIcon = styled.div`
+  font-size: 64px;
+  margin-bottom: ${({ theme }) => theme.spacing.lg};
+`;
+
+const EmptyStateText = styled.p`
+  color: ${({ theme }) => theme.colors.text.primary};
+  font-size: ${({ theme }) => theme.fontSizes.lg};
   font-weight: ${({ theme }) => theme.fontWeights.medium};
+  margin: 0 0 ${({ theme }) => theme.spacing.sm} 0;
+  font-family: 'Nunito', sans-serif;
+`;
+
+const EmptyStateSubtext = styled.p`
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: ${({ theme }) => theme.fontSizes.base};
+  margin: 0;
+  font-family: 'Nunito', sans-serif;
+`;
+
+const QuestionBadge = styled.span<{ type: string }>`
+  display: inline-block;
+  padding: ${({ theme }) => `${theme.spacing.xs} ${theme.spacing.sm}`};
+  background: ${({ type }) => {
+    switch (type) {
+      case 'single-choice': return '#e0f2fe';
+      case 'multi-choice': return '#f0fdf4';
+      case 'yes-no': return '#fef3c7';
+      case 'quick-reply': return '#ede9fe';
+      default: return '#f3f4f6';
+    }
+  }};
+  color: ${({ type }) => {
+    switch (type) {
+      case 'single-choice': return '#0369a1';
+      case 'multi-choice': return '#166534';
+      case 'yes-no': return '#a16207';
+      case 'quick-reply': return '#6b21a8';
+      default: return '#4b5563';
+    }
+  }};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-size: ${({ theme }) => theme.fontSizes.xs};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  text-transform: uppercase;
+  margin-right: ${({ theme }) => theme.spacing.md};
   font-family: 'Nunito', sans-serif;
 `;
 

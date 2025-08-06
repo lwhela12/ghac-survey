@@ -114,6 +114,14 @@ class SurveyEngine {
 
     // Update variables based on answer
     const block = this.blocks[questionId as keyof typeof this.blocks];
+    
+    // If the block has a variable field, store the answer in that variable
+    if (block && 'variable' in block) {
+      const variableName = (block as any).variable;
+      state.variables[variableName] = answer;
+      logger.debug(`Stored answer in variable ${variableName}: ${answer}`);
+    }
+    
     if (block && 'options' in block) {
       const selectedOption = Array.isArray(block.options) && 
         block.options.find((opt: any) => opt.value === answer || opt.id === answer);
@@ -291,11 +299,7 @@ class SurveyEngine {
     // Handle conditionalNext in current block
     if (!nextBlockId && 'conditionalNext' in currentBlock) {
       const conditionalNext = currentBlock.conditionalNext as any;
-      if (this.evaluateCondition(conditionalNext.if, state.variables)) {
-        nextBlockId = conditionalNext.then;
-      } else {
-        nextBlockId = conditionalNext.else;
-      }
+      nextBlockId = this.evaluateConditionalNext(conditionalNext, state.variables);
     }
 
     // Handle conditional display
@@ -344,6 +348,23 @@ class SurveyEngine {
     return null;
   }
 
+  private evaluateConditionalNext(conditionalNext: any, variables: Record<string, any>): string | null {
+    if (!conditionalNext) return null;
+    
+    if (this.evaluateCondition(conditionalNext.if, variables)) {
+      return conditionalNext.then;
+    } else {
+      // Check if else is a nested condition
+      if (typeof conditionalNext.else === 'object' && 'if' in conditionalNext.else) {
+        // Recursively evaluate nested condition
+        return this.evaluateConditionalNext(conditionalNext.else, variables);
+      } else {
+        // Simple else value
+        return conditionalNext.else;
+      }
+    }
+  }
+
   private evaluateCondition(condition: any, variables: Record<string, any>): boolean {
     if ('variable' in condition && 'equals' in condition) {
       // Handle array comparisons
@@ -351,6 +372,15 @@ class SurveyEngine {
         return JSON.stringify(condition.equals.sort()) === JSON.stringify(variables[condition.variable].sort());
       }
       return variables[condition.variable] === condition.equals;
+    }
+
+    if ('variable' in condition && 'contains' in condition) {
+      // Check if array contains a value
+      const varValue = variables[condition.variable];
+      if (Array.isArray(varValue)) {
+        return varValue.includes(condition.contains);
+      }
+      return false;
     }
 
     if ('variable' in condition && 'greaterThan' in condition) {

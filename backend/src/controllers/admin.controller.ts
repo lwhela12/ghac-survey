@@ -457,6 +457,114 @@ class AdminController {
     }
   }
 
+  async getQuestionStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const db = getDb();
+      
+      if (!db) {
+        return res.json({ questionStats: [] });
+      }
+
+      // Get all single-choice and multi-choice questions from survey structure
+      const surveyStructure = require('../database/survey-structure.json');
+      const questions = [];
+      
+      // Extract questions that we want analytics for
+      for (const [blockId, block] of Object.entries(surveyStructure.blocks)) {
+        const blockData = block as any;
+        if (blockData.type === 'single-choice' || blockData.type === 'multi-choice' || 
+            blockData.type === 'yes-no' || blockData.type === 'quick-reply') {
+          questions.push({
+            id: blockId,
+            text: typeof blockData.content === 'string' ? blockData.content : blockData.content?.default || blockData.content?.['non-supporter'] || '',
+            type: blockData.type,
+            options: blockData.options || []
+          });
+        }
+      }
+
+      // Get answer statistics for each question
+      const questionStats = [];
+      
+      for (const question of questions) {
+        // The answers table stores the original block ID in the metadata field
+        // We need to query using the metadata field to find answers for each block
+        const statsQuery = `
+          SELECT 
+            a.answer_text,
+            a.answer_choice_ids,
+            COUNT(*) as count
+          FROM answers a
+          WHERE a.metadata->>'blockId' = $1
+          GROUP BY a.answer_text, a.answer_choice_ids
+        `;
+        
+        const result = await db.query(statsQuery, [question.id]);
+        
+        // Calculate distribution
+        const distribution = {};
+        let totalResponses = 0;
+        
+        for (const row of result.rows) {
+          const count = parseInt(row.count);
+          totalResponses += count;
+          
+          if (row.answer_choice_ids && row.answer_choice_ids.length > 0) {
+            // Multi-choice answers
+            for (const choiceId of row.answer_choice_ids) {
+              distribution[choiceId] = (distribution[choiceId] || 0) + count;
+            }
+          } else if (row.answer_text) {
+            // Single-choice or text answers
+            distribution[row.answer_text] = (distribution[row.answer_text] || 0) + count;
+          }
+        }
+        
+        // Convert counts to percentages and map to option labels
+        const answerDistribution: Record<string, any> = {};
+        
+        if (question.options && question.options.length > 0) {
+          for (const option of question.options) {
+            const optionData = option as any;
+            const count = distribution[optionData.value] || distribution[optionData.id] || 0;
+            // For multi-choice, use the count directly. For single-choice, calculate percentage from total responses
+            const divisor = question.type === 'multi-choice' ? totalResponses : totalResponses;
+            const percentage = divisor > 0 ? Math.round((count / divisor) * 100) : 0;
+            answerDistribution[optionData.label] = {
+              count,
+              percentage
+            };
+          }
+        } else {
+          // For questions without predefined options
+          for (const [answer, count] of Object.entries(distribution)) {
+            const answerCount = count as number;
+            const percentage = totalResponses > 0 ? Math.round((answerCount / totalResponses) * 100) : 0;
+            answerDistribution[answer] = {
+              count: answerCount,
+              percentage
+            };
+          }
+        }
+        
+        if (totalResponses > 0) {
+          questionStats.push({
+            questionId: question.id,
+            questionText: question.text,
+            questionType: question.type,
+            totalResponses,
+            answerDistribution
+          });
+        }
+      }
+      
+      res.json({ questionStats });
+    } catch (error) {
+      console.error('Error getting question stats:', error);
+      next(error);
+    }
+  }
+
   async getAnalyticsSummary(req: Request, res: Response, next: NextFunction) {
     try {
       const { surveyId } = req.query;

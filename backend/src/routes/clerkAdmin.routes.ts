@@ -14,5 +14,6 @@ router.get('/export', adminController.exportResponses);
 
 // Analytics
 router.get('/analytics/summary', adminController.getAnalyticsSummary);
+router.get('/analytics/questions', adminController.getQuestionStats);
 
 export default router;

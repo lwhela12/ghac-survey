@@ -51,6 +51,9 @@ export const clerkAdminApi = {
   // Analytics
   getAnalyticsSummary: () => 
     clerkApi.get('/api/clerk-admin/analytics/summary?surveyId=11111111-1111-1111-1111-111111111111'),
+  
+  getQuestionStats: () =>
+    clerkApi.get('/api/clerk-admin/analytics/questions'),
 };
 
 export default clerkApi;
