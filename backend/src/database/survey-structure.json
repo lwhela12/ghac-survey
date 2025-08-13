@@ -158,11 +158,10 @@
     },
     "b2-info-goodbye": {
       "id": "b2-info-goodbye",
-      "type": "dynamic-message",
+      "type": "final-message",
       "content": "All good! Thanks for stopping by. I invite you to pop on over to our site to learn more about the Greater Hartford Arts Council. Until next time!! 👋",
-      "autoAdvance": true,
-      "autoAdvanceDelay": 1000,
-      "next": "b2-info-exit"
+      "redirect": "https://www.nesolagus.com/ghac-thank-you",
+      "redirectDelay": 5000
     },
     "b2-info-exit": {
       "id": "b2-info-exit",

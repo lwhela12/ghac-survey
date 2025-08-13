@@ -209,10 +209,21 @@ const ChatInterface: React.FC = () => {
           {isTyping && <TypingIndicator />}
           
           {/* Inline Question Area */}
-          {currentQuestion && !isLoading && !isTyping && 
-           currentQuestion.type !== 'dynamic-message' && 
-           currentQuestion.type !== 'videoask' && 
-           currentQuestion.type !== 'video-autoplay' && (
+          {(() => {
+            // Only render inline area for question types that produce UI
+            const nonRenderableTypes = new Set([
+              'dynamic-message',
+              'final-message',
+              'videoask',
+              'video-autoplay',
+            ] as const);
+
+            const shouldRenderInline = !!currentQuestion && !isLoading && !isTyping &&
+              !nonRenderableTypes.has(currentQuestion.type as any);
+
+            if (!shouldRenderInline) return null;
+
+            return (
             <QuestionArea>
               {(currentQuestion.type === 'single-choice' ||
                 currentQuestion.type === 'multi-choice' ||
@@ -235,7 +246,8 @@ const ChatInterface: React.FC = () => {
                 </QuestionWrapper>
               )}
             </QuestionArea>
-          )}
+            );
+          })()}
           
           {/* Welcome State */}
           {!sessionId && !currentQuestion && (
