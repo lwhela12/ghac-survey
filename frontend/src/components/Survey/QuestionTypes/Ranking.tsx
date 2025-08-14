@@ -1,25 +1,6 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { Question } from '../../../types/survey';
-import {
-  DndContext,
-  closestCenter,
-  DragEndEvent,
-  MouseSensor,
-  TouchSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  verticalListSortingStrategy,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface RankingProps {
   question: Question;
@@ -30,23 +11,6 @@ interface RankingProps {
 const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
   const [items, setItems] = useState(question.options || []);
   const maxSelections = question.maxSelections || 3;
-  // Detect coarse pointers (mobile/touch)
-  const [isCoarse, setIsCoarse] = useState<boolean>(false);
-  useEffect(() => {
-    try {
-      const mm = window.matchMedia('(pointer: coarse)');
-      const update = () => setIsCoarse(mm.matches || navigator.maxTouchPoints > 0);
-      update();
-      if (mm.addEventListener) mm.addEventListener('change', update);
-      else if ((mm as any).addListener) (mm as any).addListener(update);
-      return () => {
-        if (mm.removeEventListener) mm.removeEventListener('change', update);
-        else if ((mm as any).removeListener) (mm as any).removeListener(update);
-      };
-    } catch {
-      setIsCoarse(navigator.maxTouchPoints > 0);
-    }
-  }, []);
 
   // Mobile tap-to-swap state
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -62,32 +26,51 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
     const { a, b, oldPos } = pendingSwap.current;
     const ids = [a, b];
     const newPos: Record<string, number> = {};
-    ids.forEach((id) => {
-      const el = itemRefs.current[id];
-      if (el) newPos[id] = el.getBoundingClientRect().top;
-    });
-    ids.forEach((id) => {
-      const el = itemRefs.current[id];
-      if (!el) return;
-      const dy = (oldPos[id] ?? 0) - (newPos[id] ?? 0);
-      if (!Number.isFinite(dy) || Math.abs(dy) < 1) return;
-      el.style.transition = 'none';
-      el.style.transform = `translateY(${dy}px)`;
-      requestAnimationFrame(() => {
-        el.style.transition = 'transform 180ms ease-out';
-        el.style.transform = 'translateY(0)';
-        const cleanup = () => {
-          el.style.transition = '';
-          el.style.transform = '';
-          el.removeEventListener('transitionend', cleanup);
-        };
-        el.addEventListener('transitionend', cleanup);
+    try {
+      // Measure new positions
+      ids.forEach((id) => {
+        const el = itemRefs.current[id];
+        if (el) newPos[id] = el.getBoundingClientRect().top;
       });
-    });
-    pendingSwap.current = null;
+
+      // Apply FLIP for each swapped element
+      ids.forEach((id) => {
+        const el = itemRefs.current[id];
+        if (!el) return;
+        const dy = (oldPos[id] ?? 0) - (newPos[id] ?? 0);
+        if (typeof dy !== 'number' || !isFinite(dy) || Math.abs(dy) < 1) return;
+
+        el.style.transition = 'none';
+        el.style.transform = `translateY(${dy}px)`;
+        requestAnimationFrame(() => {
+          el.style.transition = 'transform 180ms ease-out';
+          el.style.transform = 'translateY(0)';
+          const cleanup = () => {
+            el.style.transition = '';
+            el.style.transform = '';
+            el.removeEventListener('transitionend', cleanup);
+          };
+          // Fallback cleanup in case transitionend doesn't fire
+          const timeout = window.setTimeout(cleanup, 220);
+          const wrappedCleanup = () => {
+            window.clearTimeout(timeout);
+            cleanup();
+          };
+          el.addEventListener('transitionend', wrappedCleanup);
+        });
+      });
+    } catch (e) {
+      // Swallow any animation errors to avoid crashing the app
+      // eslint-disable-next-line no-console
+      console.warn('Ranking FLIP animation skipped:', e);
+    } finally {
+      pendingSwap.current = null;
+      // Ensure selection highlight is cleared as soon as animation completes
+      setSelectedId(null);
+    }
   }, [items]);
 
-  const handleMobileClick = (id: string) => {
+  const handleItemClick = (id: string) => {
     if (disabled) return;
     if (!selectedId) {
       setSelectedId(id);
@@ -110,28 +93,15 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
       const el = itemRefs.current[key];
       if (el) oldPos[key] = el.getBoundingClientRect().top;
     });
-    setItems((prev) => arrayMove(prev, from, to));
+    setItems((prev) => {
+      const next = prev.slice();
+      const tmp = next[from];
+      next[from] = next[to];
+      next[to] = tmp;
+      return next;
+    });
     pendingSwap.current = { a: selectedId, b: id, oldPos };
     setSelectedId(null);
-  };
-
-  const sensors = useSensors(
-    // Start quickly on mouse; small movement threshold removes dragginess
-    useSensor(MouseSensor, { activationConstraint: { distance: 1 } }),
-    // Long-press on touch to avoid accidental scrolls
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const ids = useMemo(() => items.map((it) => it.id), [items]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = items.findIndex((it) => it.id === active.id);
-    const newIndex = items.findIndex((it) => it.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    setItems((prev) => arrayMove(prev, oldIndex, newIndex));
   };
 
   const handleSubmit = () => {
@@ -139,68 +109,37 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
     onAnswer(topItems);
   };
 
-  // Mobile render: tap-to-swap
-  if (isCoarse) {
-    return (
-      <Container>
-        <Instructions>
-          Tap one item, then another to swap your top {maxSelections} priorities:
-        </Instructions>
-        <OptionsContainer>
-          {items.map((option, index) => (
-            <OptionItem
-              key={option.id}
-              ref={setItemRef(option.id)}
-              $isDragging={false}
-              $isDragOver={false}
-              $isTopChoice={index < maxSelections}
-              $isSelected={selectedId === option.id}
-              data-index={index}
-              onClick={() => handleMobileClick(option.id)}
-            >
-              <DragHandle aria-hidden>↕︎</DragHandle>
-              <Number $isTopChoice={index < maxSelections}>{index + 1}</Number>
-              <Label>{option.label}</Label>
-            </OptionItem>
-          ))}
-        </OptionsContainer>
-        <SubmitSection>
-          <Hint>Your top {maxSelections} selections will be submitted</Hint>
-          <SubmitButton onClick={() => onAnswer(items.slice(0, maxSelections).map((opt) => opt.value))} disabled={disabled}>
-            Continue with Top {maxSelections}
-          </SubmitButton>
-        </SubmitSection>
-      </Container>
-    );
-  }
-
   return (
     <Container>
-      <Instructions>
-        Drag to rank your top {maxSelections} priorities:
-      </Instructions>
-
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-        modifiers={[restrictToVerticalAxis]}
-      >
-        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-          <OptionsContainer>
-            {items.map((option, index) => (
-              <SortableItem
-                key={option.id}
-                id={option.id}
-                index={index}
-                label={option.label}
-                isTop={index < maxSelections}
-                disabled={!!disabled}
-              />
-            ))}
-          </OptionsContainer>
-        </SortableContext>
-      </DndContext>
+      {/* Bubble copy handles the main instruction; keeping inline area focused on the cards */}
+      <Instructions />
+      <OptionsContainer>
+        {items.map((option, index) => (
+          <OptionItem
+            key={option.id}
+            ref={setItemRef(option.id)}
+            $isDragging={false}
+            $isDragOver={false}
+            $isTopChoice={index < maxSelections}
+            $isSelected={selectedId === option.id}
+            data-index={index}
+            onClick={() => handleItemClick(option.id)}
+            role="button"
+            aria-pressed={selectedId === option.id}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleItemClick(option.id);
+              }
+            }}
+          >
+            <DragHandle aria-hidden>↕︎</DragHandle>
+            <Number $isTopChoice={index < maxSelections}>{index + 1}</Number>
+            <Label>{option.label}</Label>
+          </OptionItem>
+        ))}
+      </OptionsContainer>
 
       <SubmitSection>
         <Hint>Your top {maxSelections} selections will be submitted</Hint>
@@ -209,45 +148,6 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
         </SubmitButton>
       </SubmitSection>
     </Container>
-  );
-};
-
-interface SortableItemProps {
-  id: string;
-  index: number;
-  label: string;
-  isTop: boolean;
-  disabled: boolean;
-}
-
-const SortableItem: React.FC<SortableItemProps> = ({ id, index, label, isTop, disabled }) => {
-  const { attributes, listeners, setNodeRef, isDragging, transform, transition } = useSortable({ id, disabled });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  } as React.CSSProperties;
-
-  // Detect coarse (touch) pointers to keep handle-only drag on mobile
-  // Desktop only (mobile handled by tap-to-swap in parent)
-  const isCoarse = false;
-
-  return (
-    <OptionItem
-      ref={setNodeRef}
-      style={style}
-      $isDragging={isDragging}
-      $isDragOver={false}
-      $isTopChoice={isTop}
-      data-index={index}
-      tabIndex={0}
-      // On desktop, make whole card draggable for better discoverability
-      {...(!isCoarse ? { ...attributes, ...listeners } : {})}
-    >
-      {/* Handle remains as visual cue */}
-      <DragHandle {...(isCoarse ? { ...attributes, ...listeners } : {})} aria-label="Drag to reorder">⋮⋮</DragHandle>
-      <Number $isTopChoice={isTop}>{index + 1}</Number>
-      <Label>{label}</Label>
-    </OptionItem>
   );
 };
 
@@ -279,12 +179,15 @@ const OptionItem = styled.div<{
   align-items: center;
   gap: ${({ theme }) => theme.spacing.md};
   padding: ${({ theme }) => theme.spacing.md};
-  background-color: ${({ theme, $isTopChoice }) =>
-    $isTopChoice ? theme.colors.primary + '10' : theme.colors.surface};
+  /* Top 3 always blue-tinted; when selected, grey it out */
+  background-color: ${({ theme, $isTopChoice, $isSelected }) =>
+    $isSelected
+      ? theme.colors.border /* grey for selected state */
+      : ($isTopChoice ? theme.colors.primary + '10' : theme.colors.surface)};
   border: 2px solid ${({ theme, $isDragOver, $isTopChoice }) =>
     $isDragOver ? theme.colors.primary : $isTopChoice ? theme.colors.primary + '50' : theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
-  cursor: grab;
+  cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
   opacity: ${({ $isDragging }) => ($isDragging ? 0.5 : 1)};
   transform: ${({ $isDragOver }) => ($isDragOver ? 'scale(1.02)' : 'scale(1)')};
@@ -294,9 +197,12 @@ const OptionItem = styled.div<{
   touch-action: manipulation;
   box-shadow: ${({ $isSelected }) => ($isSelected ? '0 0 0 3px rgba(0,85,165,0.25)' : 'none')};
   
-  &:hover {
-    background-color: ${({ theme }) => theme.colors.surface};
-    border-color: ${({ theme }) => theme.colors.primary}50;
+  @media (hover: hover) {
+    &:hover {
+      background-color: ${({ theme, $isSelected }) =>
+        $isSelected ? theme.colors.borderLight : 'inherit'};
+      border-color: ${({ theme }) => theme.colors.primary}50;
+    }
   }
 `;
 

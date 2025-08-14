@@ -77,12 +77,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       
       return <Content dangerouslySetInnerHTML={{ __html: content }} />;
     }
-    
+
+    // Support basic bold markdown (**text**) in bot messages
+    if (message.type === 'bot' && message.content && message.content.includes('**')) {
+      const html = message.content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      return <Content dangerouslySetInnerHTML={{ __html: html }} />;
+    }
+
     // Check if this is a semantic differential answer in user message
     if (message.type === 'user' && message.content.includes('○') && message.content.includes('●')) {
       return <SemanticContent>{message.content}</SemanticContent>;
     }
-    
+
     return <Content>{message.content}</Content>;
   };
 
