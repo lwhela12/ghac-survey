@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { Question } from '../../../types/survey';
 import {
@@ -32,8 +32,10 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
   const maxSelections = question.maxSelections || 3;
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    // Start quickly on mouse; small movement threshold removes dragginess
+    useSensor(MouseSensor, { activationConstraint: { distance: 1 } }),
+    // Long-press on touch to avoid accidental scrolls
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -106,6 +108,24 @@ const SortableItem: React.FC<SortableItemProps> = ({ id, index, label, isTop, di
     transition,
   } as React.CSSProperties;
 
+  // Detect coarse (touch) pointers to keep handle-only drag on mobile
+  const [isCoarse, setIsCoarse] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const mm = window.matchMedia('(pointer: coarse)');
+      setIsCoarse(mm.matches || navigator.maxTouchPoints > 0);
+      const listener = (e: MediaQueryListEvent) => setIsCoarse(e.matches);
+      if (mm.addEventListener) mm.addEventListener('change', listener);
+      else if ((mm as any).addListener) (mm as any).addListener(listener);
+      return () => {
+        if (mm.removeEventListener) mm.removeEventListener('change', listener);
+        else if ((mm as any).removeListener) (mm as any).removeListener(listener);
+      };
+    } catch {
+      setIsCoarse(navigator.maxTouchPoints > 0);
+    }
+  }, []);
+
   return (
     <OptionItem
       ref={setNodeRef}
@@ -114,8 +134,12 @@ const SortableItem: React.FC<SortableItemProps> = ({ id, index, label, isTop, di
       $isDragOver={false}
       $isTopChoice={isTop}
       data-index={index}
+      tabIndex={0}
+      // On desktop, make whole card draggable for better discoverability
+      {...(!isCoarse ? { ...attributes, ...listeners } : {})}
     >
-      <DragHandle {...attributes} {...listeners} aria-label="Drag to reorder">⋮⋮</DragHandle>
+      {/* On touch devices, keep the handle as the drag target to avoid accidental drags */}
+      <DragHandle {...(isCoarse ? { ...attributes, ...listeners } : {})} aria-label="Drag to reorder">⋮⋮</DragHandle>
       <Number $isTopChoice={isTop}>{index + 1}</Number>
       <Label>{label}</Label>
     </OptionItem>
