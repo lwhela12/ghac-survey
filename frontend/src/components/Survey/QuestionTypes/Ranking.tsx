@@ -1,6 +1,25 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { Question } from '../../../types/survey';
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface RankingProps {
   question: Question;
@@ -10,89 +29,28 @@ interface RankingProps {
 
 const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
   const [items, setItems] = useState(question.options || []);
-  const [draggedItem, setDraggedItem] = useState<number | null>(null);
-  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
   const maxSelections = question.maxSelections || 3;
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedItem(index);
-    e.dataTransfer.effectAllowed = 'move';
-  };
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverItem(index);
-  };
+  const ids = useMemo(() => items.map((it) => it.id), [items]);
 
-  const handleDragLeave = () => {
-    setDragOverItem(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    
-    if (draggedItem === null || draggedItem === dropIndex) {
-      setDragOverItem(null);
-      return;
-    }
-
-    const draggedOption = items[draggedItem];
-    const newItems = [...items];
-    
-    // Remove dragged item
-    newItems.splice(draggedItem, 1);
-    
-    // Insert at new position
-    newItems.splice(dropIndex, 0, draggedOption);
-    
-    setItems(newItems);
-    setDraggedItem(null);
-    setDragOverItem(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-    setDragOverItem(null);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = items.findIndex((it) => it.id === active.id);
+    const newIndex = items.findIndex((it) => it.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    setItems((prev) => arrayMove(prev, oldIndex, newIndex));
   };
 
   const handleSubmit = () => {
-    const topItems = items.slice(0, maxSelections).map(opt => opt.value);
+    const topItems = items.slice(0, maxSelections).map((opt) => opt.value);
     onAnswer(topItems);
-  };
-
-  // Touch support for mobile
-  const [touchItem, setTouchItem] = useState<number | null>(null);
-
-  const handleTouchStart = (_e: React.TouchEvent, index: number) => {
-    setTouchItem(index);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchItem === null) return;
-    
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-    const dropIndex = element?.closest('[data-index]')?.getAttribute('data-index');
-    
-    if (dropIndex !== null && dropIndex !== undefined) {
-      setDragOverItem(parseInt(dropIndex));
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (touchItem !== null && dragOverItem !== null && touchItem !== dragOverItem) {
-      const draggedOption = items[touchItem];
-      const newItems = [...items];
-      
-      newItems.splice(touchItem, 1);
-      newItems.splice(dragOverItem, 0, draggedOption);
-      
-      setItems(newItems);
-    }
-    
-    setTouchItem(null);
-    setDragOverItem(null);
   };
 
   return (
@@ -100,32 +58,29 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
       <Instructions>
         Drag to rank your top {maxSelections} priorities:
       </Instructions>
-      
-      <OptionsContainer>
-        {items.map((option, index) => (
-          <OptionItem
-            key={option.id}
-            data-index={index}
-            draggable={!disabled}
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, index)}
-            onDragEnd={handleDragEnd}
-            onTouchStart={(e) => handleTouchStart(e, index)}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            $isDragging={draggedItem === index}
-            $isDragOver={dragOverItem === index}
-            $isTopChoice={index < maxSelections}
-          >
-            <DragHandle>⋮⋮</DragHandle>
-            <Number $isTopChoice={index < maxSelections}>{index + 1}</Number>
-            <Label>{option.label}</Label>
-          </OptionItem>
-        ))}
-      </OptionsContainer>
-      
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        modifiers={[restrictToVerticalAxis]}
+      >
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          <OptionsContainer>
+            {items.map((option, index) => (
+              <SortableItem
+                key={option.id}
+                id={option.id}
+                index={index}
+                label={option.label}
+                isTop={index < maxSelections}
+                disabled={!!disabled}
+              />
+            ))}
+          </OptionsContainer>
+        </SortableContext>
+      </DndContext>
+
       <SubmitSection>
         <Hint>Your top {maxSelections} selections will be submitted</Hint>
         <SubmitButton onClick={handleSubmit} disabled={disabled}>
@@ -133,6 +88,37 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
         </SubmitButton>
       </SubmitSection>
     </Container>
+  );
+};
+
+interface SortableItemProps {
+  id: string;
+  index: number;
+  label: string;
+  isTop: boolean;
+  disabled: boolean;
+}
+
+const SortableItem: React.FC<SortableItemProps> = ({ id, index, label, isTop, disabled }) => {
+  const { attributes, listeners, setNodeRef, isDragging, transform, transition } = useSortable({ id, disabled });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  } as React.CSSProperties;
+
+  return (
+    <OptionItem
+      ref={setNodeRef}
+      style={style}
+      $isDragging={isDragging}
+      $isDragOver={false}
+      $isTopChoice={isTop}
+      data-index={index}
+    >
+      <DragHandle {...attributes} {...listeners} aria-label="Drag to reorder">⋮⋮</DragHandle>
+      <Number $isTopChoice={isTop}>{index + 1}</Number>
+      <Label>{label}</Label>
+    </OptionItem>
   );
 };
 
@@ -168,13 +154,14 @@ const OptionItem = styled.div<{
   border: 2px solid ${({ theme, $isDragOver, $isTopChoice }) =>
     $isDragOver ? theme.colors.primary : $isTopChoice ? theme.colors.primary + '50' : theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
-  cursor: move;
+  cursor: grab;
   transition: all ${({ theme }) => theme.transitions.fast};
   opacity: ${({ $isDragging }) => ($isDragging ? 0.5 : 1)};
   transform: ${({ $isDragOver }) => ($isDragOver ? 'scale(1.02)' : 'scale(1)')};
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
   
   &:hover {
     background-color: ${({ theme }) => theme.colors.surface};
