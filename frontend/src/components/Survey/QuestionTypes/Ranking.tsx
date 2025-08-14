@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { Question } from '../../../types/survey';
 import {
@@ -30,6 +30,90 @@ interface RankingProps {
 const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
   const [items, setItems] = useState(question.options || []);
   const maxSelections = question.maxSelections || 3;
+  // Detect coarse pointers (mobile/touch)
+  const [isCoarse, setIsCoarse] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const mm = window.matchMedia('(pointer: coarse)');
+      const update = () => setIsCoarse(mm.matches || navigator.maxTouchPoints > 0);
+      update();
+      if (mm.addEventListener) mm.addEventListener('change', update);
+      else if ((mm as any).addListener) (mm as any).addListener(update);
+      return () => {
+        if (mm.removeEventListener) mm.removeEventListener('change', update);
+        else if ((mm as any).removeListener) (mm as any).removeListener(update);
+      };
+    } catch {
+      setIsCoarse(navigator.maxTouchPoints > 0);
+    }
+  }, []);
+
+  // Mobile tap-to-swap state
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const setItemRef = (id: string) => (el: HTMLDivElement | null) => {
+    itemRefs.current[id] = el;
+  };
+  const pendingSwap = useRef<{ a: string; b: string; oldPos: Record<string, number> } | null>(null);
+
+  // Run simple FLIP animation for swapped items on mobile
+  useLayoutEffect(() => {
+    if (!pendingSwap.current) return;
+    const { a, b, oldPos } = pendingSwap.current;
+    const ids = [a, b];
+    const newPos: Record<string, number> = {};
+    ids.forEach((id) => {
+      const el = itemRefs.current[id];
+      if (el) newPos[id] = el.getBoundingClientRect().top;
+    });
+    ids.forEach((id) => {
+      const el = itemRefs.current[id];
+      if (!el) return;
+      const dy = (oldPos[id] ?? 0) - (newPos[id] ?? 0);
+      if (!Number.isFinite(dy) || Math.abs(dy) < 1) return;
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${dy}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = 'transform 180ms ease-out';
+        el.style.transform = 'translateY(0)';
+        const cleanup = () => {
+          el.style.transition = '';
+          el.style.transform = '';
+          el.removeEventListener('transitionend', cleanup);
+        };
+        el.addEventListener('transitionend', cleanup);
+      });
+    });
+    pendingSwap.current = null;
+  }, [items]);
+
+  const handleMobileClick = (id: string) => {
+    if (disabled) return;
+    if (!selectedId) {
+      setSelectedId(id);
+      return;
+    }
+    if (selectedId === id) {
+      setSelectedId(null);
+      return;
+    }
+    // Swap selectedId with id
+    const from = items.findIndex((it) => it.id === selectedId);
+    const to = items.findIndex((it) => it.id === id);
+    if (from === -1 || to === -1) {
+      setSelectedId(null);
+      return;
+    }
+    // Record old positions for FLIP
+    const oldPos: Record<string, number> = {};
+    [selectedId, id].forEach((key) => {
+      const el = itemRefs.current[key];
+      if (el) oldPos[key] = el.getBoundingClientRect().top;
+    });
+    setItems((prev) => arrayMove(prev, from, to));
+    pendingSwap.current = { a: selectedId, b: id, oldPos };
+    setSelectedId(null);
+  };
 
   const sensors = useSensors(
     // Start quickly on mouse; small movement threshold removes dragginess
@@ -54,6 +138,41 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
     const topItems = items.slice(0, maxSelections).map((opt) => opt.value);
     onAnswer(topItems);
   };
+
+  // Mobile render: tap-to-swap
+  if (isCoarse) {
+    return (
+      <Container>
+        <Instructions>
+          Tap one item, then another to swap your top {maxSelections} priorities:
+        </Instructions>
+        <OptionsContainer>
+          {items.map((option, index) => (
+            <OptionItem
+              key={option.id}
+              ref={setItemRef(option.id)}
+              $isDragging={false}
+              $isDragOver={false}
+              $isTopChoice={index < maxSelections}
+              $isSelected={selectedId === option.id}
+              data-index={index}
+              onClick={() => handleMobileClick(option.id)}
+            >
+              <DragHandle aria-hidden>↕︎</DragHandle>
+              <Number $isTopChoice={index < maxSelections}>{index + 1}</Number>
+              <Label>{option.label}</Label>
+            </OptionItem>
+          ))}
+        </OptionsContainer>
+        <SubmitSection>
+          <Hint>Your top {maxSelections} selections will be submitted</Hint>
+          <SubmitButton onClick={() => onAnswer(items.slice(0, maxSelections).map((opt) => opt.value))} disabled={disabled}>
+            Continue with Top {maxSelections}
+          </SubmitButton>
+        </SubmitSection>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -109,22 +228,8 @@ const SortableItem: React.FC<SortableItemProps> = ({ id, index, label, isTop, di
   } as React.CSSProperties;
 
   // Detect coarse (touch) pointers to keep handle-only drag on mobile
-  const [isCoarse, setIsCoarse] = useState<boolean>(false);
-  useEffect(() => {
-    try {
-      const mm = window.matchMedia('(pointer: coarse)');
-      setIsCoarse(mm.matches || navigator.maxTouchPoints > 0);
-      const listener = (e: MediaQueryListEvent) => setIsCoarse(e.matches);
-      if (mm.addEventListener) mm.addEventListener('change', listener);
-      else if ((mm as any).addListener) (mm as any).addListener(listener);
-      return () => {
-        if (mm.removeEventListener) mm.removeEventListener('change', listener);
-        else if ((mm as any).removeListener) (mm as any).removeListener(listener);
-      };
-    } catch {
-      setIsCoarse(navigator.maxTouchPoints > 0);
-    }
-  }, []);
+  // Desktop only (mobile handled by tap-to-swap in parent)
+  const isCoarse = false;
 
   return (
     <OptionItem
@@ -138,7 +243,7 @@ const SortableItem: React.FC<SortableItemProps> = ({ id, index, label, isTop, di
       // On desktop, make whole card draggable for better discoverability
       {...(!isCoarse ? { ...attributes, ...listeners } : {})}
     >
-      {/* On touch devices, keep the handle as the drag target to avoid accidental drags */}
+      {/* Handle remains as visual cue */}
       <DragHandle {...(isCoarse ? { ...attributes, ...listeners } : {})} aria-label="Drag to reorder">⋮⋮</DragHandle>
       <Number $isTopChoice={isTop}>{index + 1}</Number>
       <Label>{label}</Label>
@@ -168,6 +273,7 @@ const OptionItem = styled.div<{
   $isDragging: boolean; 
   $isDragOver: boolean;
   $isTopChoice: boolean;
+  $isSelected?: boolean;
 }>`
   display: flex;
   align-items: center;
@@ -186,6 +292,7 @@ const OptionItem = styled.div<{
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
+  box-shadow: ${({ $isSelected }) => ($isSelected ? '0 0 0 3px rgba(0,85,165,0.25)' : 'none')};
   
   &:hover {
     background-color: ${({ theme }) => theme.colors.surface};
