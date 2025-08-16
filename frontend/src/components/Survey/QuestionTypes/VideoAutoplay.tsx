@@ -12,6 +12,15 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [showPlayButton, setShowPlayButton] = useState(false);
+  const [showContinue, setShowContinue] = useState(false);
+  const [iframeUrl, setIframeUrl] = useState<string>('');
+  const [isMuted, setIsMuted] = useState(true);
+  const [skipped, setSkipped] = useState(false);
+  // Paused-by-default on all browsers; no tap-to-start overlay
+  const [paused, setPaused] = useState(true);
+  const [frameKey, setFrameKey] = useState(0);
+  const disabledRemountedRef = useRef(false);
+  const completionTimerRef = useRef<number | null>(null);
   const hasCompleted = useRef(false);
 
   const handleCompletion = (status: 'watched' | 'skipped') => {
@@ -28,56 +37,75 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
     }
   };
 
+  // Build VideoAsk iframe URL with flags we control
+  const buildIframeUrl = (opts: { autoplay: boolean; muted: boolean }) => {
+    if (!question.videoAskId) return '';
+    const params = new URLSearchParams({
+      justvideo: '1',
+      autoplay: opts.autoplay ? '1' : '0',
+      muted: opts.muted ? '1' : '0',
+      playsinline: '1',
+    });
+    return `https://www.videoask.com/${question.videoAskId}?${params.toString()}`;
+  };
+
   useEffect(() => {
-    if (question.videoAskId) {
-      // For justvideo embeds (like the intro), we'll use a timer based on the video duration
-      // since they don't send reliable completion events
-      const videoDuration = question.duration ? 
-        parseInt(question.duration.match(/\d+/)?.[0] || '60') * 1000 : 
-        60000; // Default to 60 seconds if no duration specified
-      
-      // Add a small buffer for loading time
-      const completionTime = videoDuration + 2000;
-      
-      console.log(`Setting up VideoAsk intro timer for ${completionTime}ms`);
-      
-      const completionTimer = setTimeout(() => {
-        console.log('VideoAsk intro timer completed');
-        handleCompletion('watched');
-      }, completionTime);
-
-      // Still listen for messages in case VideoAsk sends completion events
-      const handleMessage = (event: MessageEvent) => {
-        if (!event.origin.includes('videoask.com') || hasCompleted.current) return;
-        
-        // Log events for debugging
-        console.log('VideoAsk event:', event.data.type || event.data.event);
-        
-        // Check for any completion-like events
-        if (event.data.type === 'video_complete' ||
-            event.data.type === 'videoask_completed' ||
-            event.data.event === 'ended') {
-          console.log('Video completed via event');
-          clearTimeout(completionTimer);
-          handleCompletion('watched');
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-
-      return () => {
-        window.removeEventListener('message', handleMessage);
-        clearTimeout(completionTimer);
-      };
-    } else {
+    if (!question.videoAskId) {
       const video = videoRef.current;
       if (video) {
-        video.play().catch(() => {
-          setShowPlayButton(true);
-        });
+        video.play().catch(() => setShowPlayButton(true));
       }
+      return;
     }
-  }, [question.videoAskId, onComplete]);
+
+    // Clear any existing timer when re-evaluating
+    if (completionTimerRef.current) {
+      clearTimeout(completionTimerRef.current);
+      completionTimerRef.current = null;
+    }
+
+    // If this video is no longer the active question, leave it exactly as-is
+    // Do not reload, pause, or modify the iframe so playback state persists
+    if (disabled) {
+      return;
+    }
+
+    // Active question instance: load paused (no autoplay)
+    setIframeUrl(buildIframeUrl({ autoplay: false, muted: true }));
+    setIsMuted(true);
+    setPaused(true);
+
+    // Show Continue after expected duration; do not auto-advance
+    const videoDuration = question.duration
+      ? parseInt(question.duration.match(/\d+/)?.[0] || '60') * 1000
+      : 60000;
+    const showContinueTime = videoDuration + 2000;
+    const t = window.setTimeout(() => setShowContinue(true), showContinueTime);
+    completionTimerRef.current = t as unknown as number;
+
+    // Optional: enable early Continue on completion-like events
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.origin.includes('videoask.com') || hasCompleted.current) return;
+      const evt = event.data?.type || event.data?.event;
+      if (evt) console.log('VideoAsk event:', evt);
+      if (
+        event.data?.type === 'video_complete' ||
+        event.data?.type === 'videoask_completed' ||
+        event.data?.event === 'ended'
+      ) {
+        setShowContinue(true);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (completionTimerRef.current) {
+        clearTimeout(completionTimerRef.current);
+        completionTimerRef.current = null;
+      }
+    };
+  }, [question.videoAskId, onComplete, disabled]);
 
   const handlePlayClick = () => {
     const video = videoRef.current;
@@ -87,16 +115,32 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
     }
   };
 
+  const handleSkipClick = () => {
+    if (completionTimerRef.current) {
+      clearTimeout(completionTimerRef.current);
+      completionTimerRef.current = null;
+    }
+    // Persist the iframe exactly as-is (playing or paused) and advance
+    setSkipped(true);
+    handleCompletion('skipped');
+  };
+  // No tap-to-start overlay; user can press play in the embedded controls
+
   return (
     <Container>
       <VideoWrapper>
         {question.videoAskId ? (
-          <VideoAskIframe
-            ref={iframeRef}
-            src={`https://www.videoask.com/${question.videoAskId}?justvideo=1&autoplay=1&muted=0`}
-            allow="camera *; microphone *; autoplay *; encrypted-media *; fullscreen *; display-capture *;"
-            title="Welcome video from Amanda"
-          />
+          <>
+            <VideoAskIframe
+              key={frameKey}
+              ref={iframeRef}
+              src={iframeUrl}
+              // Always omit autoplay permission for intro; we load it paused
+              allow={'encrypted-media; fullscreen; display-capture'}
+              title="Welcome video from Amanda"
+            />
+            {/* No overlay; showing the player in paused state */}
+          </>
         ) : (
           <>
             <Video
@@ -116,9 +160,12 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
         )}
       </VideoWrapper>
       {!disabled && (
-        <SkipButton onClick={() => handleCompletion('skipped')}>
-          Skip Video →
-        </SkipButton>
+        <ButtonsRow>
+          <SkipButton onClick={handleSkipClick}>Skip Video →</SkipButton>
+          {showContinue && (
+            <ContinueButton onClick={() => handleCompletion('watched')}>Continue →</ContinueButton>
+          )}
+        </ButtonsRow>
       )}
     </Container>
   );
@@ -174,6 +221,34 @@ const SkipButton = styled.button`
   }
 `;
 
+const ContinueButton = styled.button`
+  background: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.text.inverse};
+  border: none;
+  border-radius: ${({ theme }) => theme.borderRadius.full};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  cursor: pointer;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
+  margin-left: ${({ theme }) => theme.spacing.md};
+  align-self: flex-start;
+  transition: all ${({ theme }) => theme.transitions.fast};
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+`;
+
+const ButtonsRow = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: 48px;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    margin-left: 0;
+  }
+`;
+
 const PlayButtonOverlay = styled.div`
   position: absolute;
   top: 0;
@@ -210,5 +285,7 @@ const VideoAskIframe = styled.iframe`
   border: none;
   border-radius: ${({ theme }) => theme.borderRadius.lg};
 `;
+
+// No overlays rendered in paused mode
 
 export default VideoAutoplay;

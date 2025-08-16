@@ -52,6 +52,7 @@ export interface Option {
   next?: string;
   action?: string;
   url?: string;
+  showText?: boolean;
 }
 
 export interface SemanticScale {

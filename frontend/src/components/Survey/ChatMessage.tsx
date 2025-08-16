@@ -78,10 +78,23 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       return <Content dangerouslySetInnerHTML={{ __html: content }} />;
     }
 
-    // Support basic bold markdown (**text**) in bot messages
-    if (message.type === 'bot' && message.content && message.content.includes('**')) {
-      const html = message.content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      return <Content dangerouslySetInnerHTML={{ __html: html }} />;
+    // Support basic markdown (bold and links) in bot messages
+    if (message.type === 'bot' && message.content) {
+      let html = message.content;
+      
+      // Convert markdown links [text](url) to HTML links
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, 
+        '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #0055A5; text-decoration: underline;">$1</a>');
+      
+      // Convert bold **text** to HTML
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      
+      // Convert line breaks to <br> tags
+      html = html.replace(/\n/g, '<br>');
+      
+      if (html !== message.content) {
+        return <Content dangerouslySetInnerHTML={{ __html: html }} />;
+      }
     }
 
     // Check if this is a semantic differential answer in user message

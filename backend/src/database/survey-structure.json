@@ -7,7 +7,7 @@
       {
         "id": "opening",
         "name": "Opening",
-        "blocks": ["b0", "b1", "b1a", "b1b", "b1c", "b2", "b2-info", "b2-info-1", "b2-info-2", "b2-info-ready", "b2-info-goodbye", "b2-info-exit", "b3", "b3-response"]
+        "blocks": ["b0", "b1", "b1a", "b1a-skip", "b1b", "b1c", "b2", "b2-info", "b2-info-1", "b2-info-2", "b2-info-ready", "b2-info-goodbye", "b2-info-exit", "b3", "b3-response"]
       },
       {
         "id": "connection-context",
@@ -37,12 +37,12 @@
       {
         "id": "commitment-next-steps",
         "name": "Commitment & Next Steps",
-        "blocks": ["b15", "b15-learn-more", "b16", "b16-no-updates", "b16a"]
+        "blocks": ["b15", "b15-learn-more", "b16", "b16-no-updates", "b16a-email", "b16a-text", "b16a-newsletter", "b16a-mix", "b16a-social"]
       },
       {
         "id": "closing-demographics",
         "name": "Closing & Demographics",
-        "blocks": ["b17", "b18", "b19", "b19-prefer-not", "b19.2", "b19.2-self-describe", "b19.2-prefer-not", "b19.3", "b19.3-self-describe", "b19.3-prefer-not", "b19.4", "b19.5", "b19.5-celebration-gif", "b20", "b20-no-share"]
+        "blocks": ["b17", "b17-response", "b18", "b18-no-share-transition", "b18-congratulations", "b19", "b19-prefer-not", "b19.2", "b19.2-self-describe", "b19.2-prefer-not", "b19.3", "b19.3-self-describe", "b19.3-prefer-not", "b19.4", "b19.5", "b19.5-celebration-gif", "b19.5-celebration-gif-no-share", "b20-no-share-delay", "b20", "b20-no-share"]
       }
     ]
   },
@@ -50,7 +50,7 @@
     "b0": {
       "id": "b0",
       "type": "dynamic-message",
-      "content": "Hi! I'm Amanda Roy, CEO of the Greater Hartford Arts Council.",
+      "content": "Hi! I'm Amanda Roy, CEO of the Greater Hartford Arts Council.\n\nClick play below to hear why we are asking for your help. (Or click \"Skip Video\" if you are the eager type! 😂)",
       "autoAdvance": true,
       "autoAdvanceDelay": 1000,
       "next": "b1"
@@ -60,14 +60,27 @@
       "type": "video-autoplay",
       "content": "",
       "videoAskId": "f5lsaq7hr",
-      "duration": "65 seconds",
+      "duration": "60 seconds",
       "persistVideo": true,
-      "next": "b1a"
+      "variable": "intro_video_status",
+      "conditionalNext": {
+        "if": { "variable": "intro_video_status", "equals": "skipped" },
+        "then": "b1a-skip",
+        "else": "b1a"
+      }
     },
     "b1a": {
       "id": "b1a",
       "type": "dynamic-message",
       "content": "Yep, that's me! ☝️",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 1000,
+      "next": "b1b"
+    },
+    "b1a-skip": {
+      "id": "b1a-skip",
+      "type": "dynamic-message",
+      "content": "Alright! Let's get right to it!",
       "autoAdvance": true,
       "autoAdvanceDelay": 1000,
       "next": "b1b"
@@ -87,7 +100,7 @@
       "links": [
         {
           "text": "short and full version of our policy",
-          "url": "https://www.nesolagus.com/privacy-policy"
+          "url": "https://www.nesolagus.com/ghac-nesolagus-privacy-policy"
         }
       ],
       "autoAdvance": true,
@@ -207,7 +220,7 @@
     "b4": {
       "id": "b4",
       "type": "single-choice",
-      "content": "I'd love to know—what's the most accurate way you would describe your connection to the Greater Hartford Arts Council?",
+      "content": "How would you **best describe** your connection to the Greater Hartford Arts Council?",
       "variable": "connection_type",
       "options": [
         {
@@ -452,31 +465,36 @@
           "value": 1,
           "emoji": "😴",
           "label": "Not Essential",
-          "description": "Nice to have, but not essential"
+          "description": "Nice to have, but not essential",
+          "showText": true
         },
         {
           "value": 2,
           "emoji": "😐",
           "label": "Somewhat Important",
-          "description": "Somewhat important"
+          "description": "Somewhat important",
+          "showText": false
         },
         {
           "value": 3,
           "emoji": "🙂",
           "label": "Important",
-          "description": "Important for quality of life"
+          "description": "Important for quality of life",
+          "showText": false
         },
         {
           "value": 4,
           "emoji": "😊",
           "label": "Very Important",
-          "description": "Very important to our community"
+          "description": "Very important to our community",
+          "showText": false
         },
         {
           "value": 5,
           "emoji": "🔥",
           "label": "Absolutely Essential",
-          "description": "Absolutely essential—like schools or healthcare"
+          "description": "Absolutely essential—like schools or healthcare",
+          "showText": true
         }
       ],
       "next": "b6-response"
@@ -592,7 +610,7 @@
       "type": "single-choice",
       "content": {
         "supporter": "Thinking about why you've chosen to support GHAC or other arts organizations, what drives your giving decisions most?",
-        "non-supporter": "If you were to support an arts organization, what would be most important to you?"
+        "non-supporter": "If you were to support an arts organization, what would be the **#1 most important** thing to you?"
       },
       "contentCondition": {
         "if": {
@@ -710,7 +728,7 @@
     "b10": {
       "id": "b10",
       "type": "single-choice",
-      "content": "Organizations can connect with supporters in many ways. What type of relationship would feel most meaningful to you?",
+      "content": "Organizations can connect with supporters in many ways. What type of relationship would feel **most meaningful** to you?",
       "variable": "ideal_relationship",
       "options": [
         {
@@ -828,7 +846,11 @@
       "videoAskFormId": "fdmk80eer",
       "videoDelay": 20,
       "variable": "future_vision",
-      "next": "b12-response"
+      "conditionalNext": {
+        "if": { "variable": "future_vision_type", "equals": "skipped" },
+        "then": "b13",
+        "else": "b12-permission"
+      }
     },
     "b12-response": {
       "id": "b12-response",
@@ -853,7 +875,7 @@
     "b12-permission": {
       "id": "b12-permission",
       "type": "quick-reply",
-      "content": "Thank you for sharing your personal story!\n\nWith your permission, we'd love to potentially share inspiring stories like yours publicly to celebrate our creative community and show others the impact of the arts. Would you be comfortable with GHAC sharing your story?",
+      "content": "What a thoughtful vision—thank you for sharing that!\n\nWith your permission, we'd love to potentially share inspiring stories like yours publicly to celebrate our creative community and show others the impact of the arts. Would you be comfortable with GHAC sharing your story?",
       "variable": "vision_share_permission",
       "options": [
         {
@@ -950,7 +972,7 @@
     "b14": {
       "id": "b14",
       "type": "ranking",
-      "content": "As we look ahead, what would you **most like to see** strengthened in Greater Hartford's arts ecosystem? (To rank, tap any two cards to swap their order)",
+      "content": "As we look ahead, what would you **most like to see** strengthened in Greater Hartford's arts ecosystem? (To rank, click any two cards to swap their order)",
       "variable": "top_priorities",
       "maxSelections": 3,
       "options": [
@@ -996,7 +1018,7 @@
     "b15": {
       "id": "b15",
       "type": "multi-choice",
-      "content": "Everyone contributes differently to our creative community. What specific opportunities might interest you in the next year?",
+      "content": "Everyone contributes differently to our creative community. What specific opportunities might interest you in the next year?\n\nNo pressure—just exploring possibilities! Select any that appeal to you:",
       "variable": "interests",
       "options": [
         {
@@ -1041,7 +1063,7 @@
         }
       ],
       "conditionalNext": {
-        "if": { "variable": "interests", "contains": "learn-more" },
+        "if": { "variable": "interests", "equals": ["learn-more"] },
         "then": "b15-learn-more",
         "else": "b16"
       }
@@ -1088,19 +1110,19 @@
           "id": "social",
           "label": "Social media updates",
           "value": "social",
-          "next": "b17"
-        },
-        {
-          "id": "no-updates",
-          "label": "I'd prefer not to receive updates",
-          "value": "no-updates",
-          "next": "b16-no-updates"
+          "next": "b16a-social"
         },
         {
           "id": "mix",
           "label": "A mix of these",
           "value": "mix",
           "next": "b16a-mix"
+        },
+        {
+          "id": "no-updates",
+          "label": "I'd prefer not to receive updates",
+          "value": "no-updates",
+          "next": "b16-no-updates"
         }
       ]
     },
@@ -1260,6 +1282,14 @@
       ],
       "next": "b17"
     },
+    "b16a-social": {
+      "id": "b16a-social",
+      "type": "dynamic-message",
+      "content": "Great! Follow us on social media for updates.\n\nFind us on [Facebook](https://www.facebook.com/greaterhartfordarts/), [Instagram](https://www.instagram.com/letsgoarts/), [X](https://x.com/LetsGoArts_org), and [LinkedIn](https://www.linkedin.com/company/greater-hartford-arts-council/).\n\nThank you for connecting with us!",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 5000,
+      "next": "b17"
+    },
     "b17": {
       "id": "b17",
       "type": "scale",
@@ -1270,36 +1300,73 @@
       "options": [
         {
           "value": 1,
-          "label": "1️⃣",
-          "description": "Not valuable"
+          "emoji": "😔",
+          "label": "Not valuable",
+          "showText": true
         },
         {
           "value": 2,
-          "label": "2️⃣",
-          "description": "Somewhat valuable"
+          "emoji": "🤔",
+          "label": "Somewhat valuable",
+          "showText": false
         },
         {
           "value": 3,
-          "label": "3️⃣",
-          "description": "Valuable"
+          "emoji": "🙂",
+          "label": "Valuable",
+          "showText": false
         },
         {
           "value": 4,
-          "label": "4️⃣",
-          "description": "Very valuable"
+          "emoji": "😊",
+          "label": "Very valuable",
+          "showText": false
         },
         {
           "value": 5,
-          "label": "5️⃣",
-          "description": "Extremely valuable—I'm glad we connected"
+          "emoji": "🤩",
+          "label": "Extremely valuable",
+          "showText": true
         }
       ],
+      "next": "b17-response"
+    },
+    "b17-response": {
+      "id": "b17-response",
+      "type": "dynamic-message",
+      "conditionalContent": [
+        {
+          "condition": {
+            "or": [
+              { "variable": "conversation_value", "equals": 1 },
+              { "variable": "conversation_value", "equals": 2 }
+            ]
+          },
+          "content": "Thanks for letting us know{{#if user_name}}, {{user_name}}{{/if}}. We'll keep working to make these conversations more useful."
+        },
+        {
+          "condition": { "variable": "conversation_value", "equals": 3 },
+          "content": "Appreciate your honesty{{#if user_name}}, {{user_name}}{{/if}}. I'll take that as a cue to keep improving."
+        },
+        {
+          "condition": {
+            "or": [
+              { "variable": "conversation_value", "equals": 4 },
+              { "variable": "conversation_value", "equals": 5 }
+            ]
+          },
+          "content": "Glad to hear it{{#if user_name}}, {{user_name}}{{/if}}! That means a lot and keeps me motivated."
+        }
+      ],
+      "content": "",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 2000,
       "next": "b18"
     },
     "b18": {
       "id": "b18",
       "type": "yes-no",
-      "content": "One last thing—would you be willing to share a bit more about yourself? This helps us understand who makes up our creative community. (It's completely optional and confidential)",
+      "content": "Before we wrap up, would you be willing to share a bit more about yourself? This helps us understand who makes up our creative community. (It's completely optional and confidential)",
       "variable": "demographics_consent",
       "options": [
         {
@@ -1312,9 +1379,25 @@
           "id": "no",
           "label": "I'd prefer not to",
           "value": false,
-          "next": "b20-no-share"
+          "next": "b18-no-share-transition"
         }
       ]
+    },
+    "b18-no-share-transition": {
+      "id": "b18-no-share-transition",
+      "type": "dynamic-message",
+      "content": "No worries at all!",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 2000,
+      "next": "b18-congratulations"
+    },
+    "b18-congratulations": {
+      "id": "b18-congratulations",
+      "type": "dynamic-message",
+      "content": "Congratulations! You did it!",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 1500,
+      "next": "b19.5-celebration-gif-no-share"
     },
     "b19": {
       "id": "b19",
@@ -1471,6 +1554,22 @@
       "autoAdvance": true,
       "autoAdvanceDelay": 3000,
       "next": "b20"
+    },
+    "b19.5-celebration-gif-no-share": {
+      "id": "b19.5-celebration-gif-no-share",
+      "type": "dynamic-message",
+      "content": "![Celebration](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2lwZnptcHVyMHV0amtrYzVlemw4Z3kzNTY0ZXRiZXdsNDBuenRsYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/lbwhz6vtJ7XHQd5ahp/giphy.gif)",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 3000,
+      "next": "b20-no-share-delay"
+    },
+    "b20-no-share-delay": {
+      "id": "b20-no-share-delay",
+      "type": "dynamic-message",
+      "content": "",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 3000,
+      "next": "b20-no-share"
     },
     "b20": {
       "id": "b20",

@@ -43,13 +43,12 @@ const Scale: React.FC<ScaleProps> = ({ question, onAnswer, disabled }) => {
                   {isSelected && <CheckMark>✓</CheckMark>}
                 </Bubble>
                 <Emoji>{option.emoji}</Emoji>
-                <Label>
-                  {option.label.split(' ').map((word, i) => (
-                    <span key={i}>{word}</span>
-                  ))}
-                </Label>
-                {(isSelected || isHovered) && option.description && (
-                  <Description>{option.description}</Description>
+                {(option.showText || isHovered) && (
+                  <Label>
+                    {option.label.split(' ').map((word, i) => (
+                      <span key={i}>{word}</span>
+                    ))}
+                  </Label>
                 )}
               </BubbleWrapper>
             );
