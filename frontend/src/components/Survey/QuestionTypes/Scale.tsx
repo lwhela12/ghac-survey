@@ -173,20 +173,6 @@ const Label = styled.div`
   }
 `;
 
-const Description = styled.div`
-  font-size: ${({ theme }) => theme.fontSizes.xs};
-  color: ${({ theme }) => theme.colors.text.secondary};
-  line-height: 1.3;
-  margin-top: ${({ theme }) => theme.spacing.xs};
-  max-width: 100px;
-  text-align: center;
-  position: absolute;
-  top: 100%;
-  margin-top: ${({ theme }) => theme.spacing.sm};
-  
-  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    display: none;
-  }
-`;
+// (unused) Description styled component removed to satisfy TypeScript checker
 
 export default Scale;

@@ -14,12 +14,6 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
   const [showPlayButton, setShowPlayButton] = useState(false);
   const [showContinue, setShowContinue] = useState(false);
   const [iframeUrl, setIframeUrl] = useState<string>('');
-  const [isMuted, setIsMuted] = useState(true);
-  const [skipped, setSkipped] = useState(false);
-  // Paused-by-default on all browsers; no tap-to-start overlay
-  const [paused, setPaused] = useState(true);
-  const [frameKey, setFrameKey] = useState(0);
-  const disabledRemountedRef = useRef(false);
   const completionTimerRef = useRef<number | null>(null);
   const hasCompleted = useRef(false);
 
@@ -72,8 +66,6 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
 
     // Active question instance: load paused (no autoplay)
     setIframeUrl(buildIframeUrl({ autoplay: false, muted: true }));
-    setIsMuted(true);
-    setPaused(true);
 
     // Show Continue after expected duration; do not auto-advance
     const videoDuration = question.duration
@@ -121,7 +113,6 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
       completionTimerRef.current = null;
     }
     // Persist the iframe exactly as-is (playing or paused) and advance
-    setSkipped(true);
     handleCompletion('skipped');
   };
   // No tap-to-start overlay; user can press play in the embedded controls
@@ -132,7 +123,6 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
         {question.videoAskId ? (
           <>
             <VideoAskIframe
-              key={frameKey}
               ref={iframeRef}
               src={iframeUrl}
               // Always omit autoplay permission for intro; we load it paused
