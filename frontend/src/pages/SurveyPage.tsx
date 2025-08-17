@@ -10,9 +10,12 @@ import ghacLogo from '../assets/images/GHAC.jpg';
 
 const SurveyPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { sessionId, progress } = useAppSelector((state) => state.survey);
+  const { sessionId, progress, currentQuestion } = useAppSelector((state) => state.survey);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [existingSessionId, setExistingSessionId] = useState<string | null>(null);
+  
+  // Hide header after b0 (opening message)
+  const showHeader = !currentQuestion || currentQuestion.id === 'b0';
 
   useEffect(() => {
     const checkForExistingSession = async () => {
@@ -65,12 +68,14 @@ const SurveyPage: React.FC = () => {
 
   return (
     <Container>
-      <Header>
+      <Header $showLogo={showHeader}>
         <HeaderBackground />
         <HeaderContent>
-          <LogoContainer>
-            <LogoImage />
-          </LogoContainer>
+          {showHeader && (
+            <LogoContainer>
+              <LogoImage />
+            </LogoContainer>
+          )}
           {sessionId && <ProgressBar progress={progress} />}
         </HeaderContent>
       </Header>
@@ -86,7 +91,7 @@ const Container = styled.div`
   background-color: ${({ theme }) => theme.colors.background};
 `;
 
-const Header = styled.header`
+const Header = styled.header<{ $showLogo: boolean }>`
   position: relative;
   background: linear-gradient(135deg, #FFF8F1 0%, #FFEEDE 100%);
   border-bottom: 2px solid rgba(74, 144, 226, 0.1);
@@ -95,6 +100,12 @@ const Header = styled.header`
   z-index: 100;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  
+  /* Reduce height when logo is hidden */
+  ${({ $showLogo }) => !$showLogo && `
+    padding: 0;
+  `}
 `;
 
 const HeaderBackground = styled.div`

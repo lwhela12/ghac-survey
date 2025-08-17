@@ -52,7 +52,7 @@
       "type": "dynamic-message",
       "content": "Hi! I'm Amanda Roy, CEO of the Greater Hartford Arts Council.\n\nClick play below to hear why we are asking for your help. (Or click \"Skip Video\" if you are the eager type! 😂)",
       "autoAdvance": true,
-      "autoAdvanceDelay": 1000,
+      "autoAdvanceDelay": 3000,
       "next": "b1"
     },
     "b1": {
