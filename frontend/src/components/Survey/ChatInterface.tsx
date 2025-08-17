@@ -1,5 +1,5 @@
 // frontend/src/components/Survey/ChatInterface.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
@@ -39,25 +39,86 @@ const ChatInterface: React.FC = () => {
   const dispatch = useAppDispatch();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const controlsDelayRef = useRef<number | null>(null);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [showScrollHint, setShowScrollHint] = useState(false);
   const { messages, currentQuestion, isTyping, isLoading, sessionId } = useAppSelector(
     (state) => state.survey
   );
 
+  const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768;
+
   const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTo({
-        top: chatContainerRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const margin = isMobile() ? 140 : 0;
+    const target = Math.max(0, el.scrollHeight - el.clientHeight - margin);
+    el.scrollTo({ top: target, behavior: 'smooth' });
+  };
+
+  const updateScrollHint = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const bottomGap = el.scrollHeight - (el.scrollTop + el.clientHeight);
+    const threshold = 48;
+    const shouldShow = isMobile() && bottomGap > threshold && !isTyping && !!currentQuestion;
+    setShowScrollHint(shouldShow);
   };
 
   useEffect(() => {
-    // Smooth scroll with a slight delay for better UX
-    // Use longer delay for new messages to let animation start
     const delay = messages.length > 0 ? 200 : 100;
-    setTimeout(scrollToBottom, delay);
+    const t = window.setTimeout(() => {
+      scrollToBottom();
+      updateScrollHint();
+    }, delay);
+    return () => window.clearTimeout(t);
   }, [messages, isTyping, currentQuestion]);
+
+  // Delay showing interactive controls to create a conversational stagger
+  useEffect(() => {
+    const nonRenderableTypes = new Set([
+      'dynamic-message',
+      'final-message',
+      'videoask',
+      'video-autoplay',
+    ] as const);
+
+    const shouldDelay = !!currentQuestion && !isLoading && !isTyping &&
+      !(nonRenderableTypes as any).has(currentQuestion.type as any);
+
+    if (controlsDelayRef.current) {
+      window.clearTimeout(controlsDelayRef.current);
+      controlsDelayRef.current = null;
+    }
+
+    if (shouldDelay) {
+      setControlsVisible(false);
+      controlsDelayRef.current = window.setTimeout(() => {
+        setControlsVisible(true);
+        updateScrollHint();
+      }, 400) as unknown as number;
+    } else {
+      setControlsVisible(true);
+      updateScrollHint();
+    }
+
+    return () => {
+      if (controlsDelayRef.current) {
+        window.clearTimeout(controlsDelayRef.current);
+        controlsDelayRef.current = null;
+      }
+    };
+  }, [currentQuestion, isLoading, isTyping]);
+
+  // Update scroll hint on user scrolling
+  useEffect(() => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const onScroll = () => updateScrollHint();
+    el.addEventListener('scroll', onScroll);
+    updateScrollHint();
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Auto-advance for dynamic-message questions and handle final-message redirect
   useEffect(() => {
@@ -218,7 +279,7 @@ const ChatInterface: React.FC = () => {
               'video-autoplay',
             ] as const);
 
-            const shouldRenderInline = !!currentQuestion && !isLoading && !isTyping &&
+            const shouldRenderInline = !!currentQuestion && !isLoading && !isTyping && controlsVisible &&
               !nonRenderableTypes.has(currentQuestion.type as any);
 
             if (!shouldRenderInline) return null;
@@ -268,6 +329,11 @@ const ChatInterface: React.FC = () => {
           
           <div ref={messagesEndRef} />
         </ChatContent>
+        {showScrollHint && (
+          <ScrollHint role="button" aria-label="Scroll down for more options" onClick={scrollToBottom}>
+            ↓
+          </ScrollHint>
+        )}
       </ChatContainer>
     </Container>
   );
@@ -318,6 +384,27 @@ const ChatContainer = styled.div`
     &:hover {
       background: ${({ theme }) => theme.colors.text.secondary};
     }
+  }
+`;
+
+const ScrollHint = styled.button`
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  border: none;
+  border-radius: ${({ theme }) => theme.borderRadius.full};
+  padding: 6px 10px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 3;
+  box-shadow: ${({ theme }) => theme.shadows.sm};
+
+  @media (min-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    display: none;
   }
 `;
 
