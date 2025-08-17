@@ -12,49 +12,31 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasResponded, setHasResponded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Debug what question we're rendering
-  console.log('VideoAskQuestion rendering:', {
-    questionId: question.id,
-    videoAskFormId: question.videoAskFormId,
-    content: question.content
-  });
+  // Detect mobile on component mount
+  useEffect(() => {
+    const mobileCheck = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    setIsMobile(mobileCheck);
+  }, []);
 
   useEffect(() => {
-    // Set a timeout to remove loading state if iframe doesn't communicate
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
+    const loadingTimeout = setTimeout(() => setIsLoading(false), 3000);
 
-    // Listen for messages from VideoAsk iframe
     const handleMessage = (event: MessageEvent) => {
-      // Verify origin is from VideoAsk and from this component's iframe
       if (!event.origin.includes('videoask.com') || (iframeRef.current && event.source !== iframeRef.current.contentWindow)) {
         return;
       }
 
-      console.log(`[VideoAsk ${question.id}] Message received:`, event.data);
-
-      // VideoAsk might send different message formats
       if (event.data.event === 'form_mounted') {
         setIsLoading(false);
         clearTimeout(loadingTimeout);
-        
-        // Inject CSS to hide buttons initially
-        injectButtonHidingCSS();
       }
 
-      // Handle completion events - VideoAsk sends different message types
-      if (event.data.type === 'videoask_submitted' || 
-          event.data.event === 'response_received' || 
-          event.data.type === 'response') {
-        
-        if (hasResponded) return; // Prevent multiple submissions
-
-        console.log(`[VideoAsk ${question.id}] Response received, advancing survey`);
+      if (event.data.type === 'videoask_submitted' || event.data.event === 'response_received' || event.data.type === 'response') {
+        if (hasResponded) return;
         setHasResponded(true);
         
-        // Extract data from VideoAsk message
         const answerData = {
           type: event.data.mediaType || event.data.response_type || 'video',
           responseId: event.data.questionId || event.data.response_id || null,
@@ -62,11 +44,9 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
           responseUrl: event.data.response_url || event.data.responseUrl || null,
           transcript: event.data.transcript || null
         };
-        console.log(`[VideoAsk ${question.id}] Calling onAnswer with:`, answerData);
         onAnswer(answerData);
       }
 
-      // Handle skip/close
       if (event.data.event === 'form_closed' || event.data.type === 'close') {
         if (!hasResponded) {
           onAnswer({ type: 'skipped' });
@@ -74,92 +54,36 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
       }
     };
 
-    // Inject CSS to control VideoAsk button visibility
-    const injectButtonHidingCSS = () => {
-      const iframe = iframeRef.current;
-      if (!iframe) return;
-
-      try {
-        // Try to access iframe content (will only work if same-origin)
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (iframeDoc) {
-          const style = iframeDoc.createElement('style');
-          style.innerHTML = `
-            /* Hide response option buttons initially */
-            [class*="AnswerButton"], 
-            [class*="answer-button"],
-            [class*="response-option"],
-            [class*="ResponseOption"],
-            button[aria-label*="Record"],
-            button[aria-label*="Type"],
-            .response-buttons,
-            .answer-options {
-              opacity: 0 !important;
-              visibility: hidden !important;
-              transition: opacity 0.5s ease-in, visibility 0.5s ease-in !important;
-            }
-            
-            /* Show buttons after video ends (adjust timing based on your video length) */
-            @keyframes showButtons {
-              to {
-                opacity: 1 !important;
-                visibility: visible !important;
-              }
-            }
-            
-            [class*="AnswerButton"],
-            [class*="answer-button"],
-            [class*="response-option"],
-            [class*="ResponseOption"],
-            button[aria-label*="Record"],
-            button[aria-label*="Type"],
-            .response-buttons,
-            .answer-options {
-              animation: showButtons 0.5s ease-in ${question.videoDelay || 20}s forwards !important;
-            }
-          `;
-          iframeDoc.head.appendChild(style);
-        }
-      } catch (e) {
-        console.log('Cannot access iframe content, trying postMessage approach');
-        
-        // Alternative: Send custom CSS via postMessage if VideoAsk supports it
-        iframe.contentWindow?.postMessage({
-          type: 'custom-css',
-          css: `/* CSS to hide buttons initially */`
-        }, '*');
-      }
-    };
-
-    // Handle iframe load event as fallback
-    const handleIframeLoad = () => {
-      setTimeout(() => {
-        setIsLoading(false);
-        // Try to inject CSS after iframe loads
-        injectButtonHidingCSS();
-      }, 1000);
-    };
-
-    const iframe = iframeRef.current;
-    if (iframe) {
-      iframe.addEventListener('load', handleIframeLoad);
-    }
-
     window.addEventListener('message', handleMessage);
     
     return () => {
       clearTimeout(loadingTimeout);
       window.removeEventListener('message', handleMessage);
-      if (iframe) {
-        iframe.removeEventListener('load', handleIframeLoad);
-      }
     };
-  }, [question.id, question.videoDelay, onAnswer, hasResponded]);
+  }, [question.id, onAnswer, hasResponded]);
 
   const handleSkip = () => {
-    console.log('Skip button clicked for VideoAsk');
+    // Stop/pause the video by removing and re-adding the iframe
+    if (iframeRef.current) {
+      // Store the current src
+      const currentSrc = iframeRef.current.src;
+      // Remove src to stop video
+      iframeRef.current.src = 'about:blank';
+      // Optionally restore src but without autoplay to fully reset
+      // This ensures the video is stopped but could be replayed if needed
+      setTimeout(() => {
+        if (iframeRef.current) {
+          iframeRef.current.src = currentSrc.replace('autoplay=1', 'autoplay=0');
+        }
+      }, 100);
+    }
     onAnswer({ type: 'skipped' });
   };
+
+  // Conditionally set the URL based on device type
+  const videoAskSrc = isMobile
+    ? `https://www.videoask.com/${question.videoAskFormId}?delay_response=1`
+    : `https://www.videoask.com/${question.videoAskFormId}?autoplay=1&muted=1&delay_response=1`;
 
   return (
     <Container>
@@ -173,7 +97,7 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
       <VideoAskWrapper $isLoading={isLoading}>
         <StyledIframe
           ref={iframeRef}
-          src={`https://www.videoask.com/${question.videoAskFormId}?autoplay=1&muted=1&delay_response=1`}
+          src={videoAskSrc}
           allow="camera; microphone; autoplay; encrypted-media; fullscreen; display-capture;"
           title="Video question from Amanda"
         />
@@ -187,6 +111,8 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
     </Container>
   );
 };
+
+// ... styled components remain the same
 
 const Container = styled.div`
   width: 100%;

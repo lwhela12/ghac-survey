@@ -14,8 +14,8 @@ const SurveyPage: React.FC = () => {
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [existingSessionId, setExistingSessionId] = useState<string | null>(null);
   
-  // Hide header after b0 (opening message)
-  const showHeader = !currentQuestion || currentQuestion.id === 'b0';
+  // Hide header after b0a (second part of opening message)
+  const showHeader = !currentQuestion || currentQuestion.id === 'b0' || currentQuestion.id === 'b0a';
 
   useEffect(() => {
     const checkForExistingSession = async () => {

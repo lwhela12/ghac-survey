@@ -323,9 +323,9 @@ class SurveyEngine {
       const nextBlock = this.blocks[nextBlockId as keyof typeof this.blocks];
       
       // Check if this is an empty content routing block, auto-advance if so
-      if (nextBlock && nextBlock.type === 'dynamic-message' && 
+      if (nextBlock && (nextBlock.type === 'routing' || (nextBlock.type === 'dynamic-message' && 
           (!nextBlock.content || nextBlock.content === '') && 
-          'conditionalNext' in nextBlock) {
+          'conditionalNext' in nextBlock))) {
         logger.debug(`Auto-advancing through empty routing block: ${nextBlockId}`);
         return this.getNextQuestion(sessionId, nextBlockId, 'acknowledged');
       }

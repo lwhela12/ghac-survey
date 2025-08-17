@@ -7,7 +7,7 @@
       {
         "id": "opening",
         "name": "Opening",
-        "blocks": ["b0", "b1", "b1a", "b1a-skip", "b1b", "b1c", "b2", "b2-info", "b2-info-1", "b2-info-2", "b2-info-ready", "b2-info-goodbye", "b2-info-exit", "b3", "b3-response"]
+        "blocks": ["b0", "b0a", "b1", "b1a", "b1a-skip", "b1b", "b1c", "b2", "b2-info", "b2-info-1", "b2-info-2", "b2-info-ready", "b2-info-goodbye", "b2-info-exit", "b3", "b3-response"]
       },
       {
         "id": "connection-context",
@@ -42,7 +42,7 @@
       {
         "id": "closing-demographics",
         "name": "Closing & Demographics",
-        "blocks": ["b17", "b17-response", "b18", "b18-no-share-transition", "b18-congratulations", "b19", "b19-prefer-not", "b19.2", "b19.2-self-describe", "b19.2-prefer-not", "b19.3", "b19.3-self-describe", "b19.3-prefer-not", "b19.4", "b19.5", "b19.5-celebration-gif", "b19.5-celebration-gif-no-share", "b20-no-share-delay", "b20", "b20-no-share"]
+        "blocks": ["b17", "b17-response", "b18", "b18-no-share-transition", "b18-congratulations", "b19", "b19-prefer-not", "b19.2", "b19.2-self-describe", "b19.2-prefer-not", "b19.3", "b19.3-self-describe", "b19.3-prefer-not", "b19.4", "b19.5", "b19.5-celebration-gif", "b19.5-celebration-gif-no-share", "b20", "b20-no-share"]
       }
     ]
   },
@@ -50,9 +50,17 @@
     "b0": {
       "id": "b0",
       "type": "dynamic-message",
-      "content": "Hi! I'm Amanda Roy, CEO of the Greater Hartford Arts Council.\n\nClick play below to hear why we are asking for your help. (Or click \"Skip Video\" if you are the eager type! 😂)",
+      "content": "Hi! I'm Amanda Roy, CEO of the Greater Hartford Arts Council.",
       "autoAdvance": true,
-      "autoAdvanceDelay": 3000,
+      "autoAdvanceDelay": 1000,
+      "next": "b0a"
+    },
+    "b0a": {
+      "id": "b0a",
+      "type": "dynamic-message",
+      "content": "Click play below to hear why I'm excited to chat with you today. (Or click \"Skip Video\" if you are the eager type! 😂)",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 2000,
       "next": "b1"
     },
     "b1": {
@@ -1559,14 +1567,6 @@
       "id": "b19.5-celebration-gif-no-share",
       "type": "dynamic-message",
       "content": "![Celebration](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2lwZnptcHVyMHV0amtrYzVlemw4Z3kzNTY0ZXRiZXdsNDBuenRsYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/lbwhz6vtJ7XHQd5ahp/giphy.gif)",
-      "autoAdvance": true,
-      "autoAdvanceDelay": 3000,
-      "next": "b20-no-share-delay"
-    },
-    "b20-no-share-delay": {
-      "id": "b20-no-share-delay",
-      "type": "dynamic-message",
-      "content": "",
       "autoAdvance": true,
       "autoAdvanceDelay": 3000,
       "next": "b20-no-share"
