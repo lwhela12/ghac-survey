@@ -173,8 +173,8 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
       <VideoAskWrapper $isLoading={isLoading}>
         <StyledIframe
           ref={iframeRef}
-          src={`https://www.videoask.com/${question.videoAskFormId}?autoplay=1&delay_response=1`}
-          allow="camera *; microphone *; autoplay *; encrypted-media *; fullscreen *; display-capture *;"
+          src={`https://www.videoask.com/${question.videoAskFormId}?autoplay=1&muted=1&delay_response=1`}
+          allow="camera; microphone; autoplay; encrypted-media; fullscreen; display-capture;"
           title="Video question from Amanda"
         />
       </VideoAskWrapper>
