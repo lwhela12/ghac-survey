@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken';
 import { getDb } from '../database/initialize';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import QueryStream from 'pg-query-stream';
+import { format, Transform } from 'fast-csv';
 
 class AdminController {
   async login(req: Request, res: Response, next: NextFunction) {
@@ -405,34 +407,32 @@ class AdminController {
     }
   }
 
-  exportResponses = async (req: Request, res: Response, next: NextFunction) => {
+    async exportResponses(req: Request, res: Response, next: NextFunction) {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).send('Database not connected');
+    }
+
+    const { surveyId } = req.query;
+    if (!surveyId) {
+      return res.status(400).send('surveyId is required');
+    }
+
+    const client = await db.connect().catch(err => {
+      logger.error('Failed to connect to database client', err);
+      next(err);
+    });
+
+    if (!client) return;
+
     try {
-      const { surveyId, format = 'csv' } = req.query;
-
-      if (format !== 'csv') {
-        throw new AppError('Only CSV export is currently supported', 400);
-      }
-
-      // This would integrate with Google Drive API
-      // For now, we'll return a CSV download
-
-      const db = getDb();
-      
-      if (!db) {
-        // Return empty CSV if no database
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="survey-export-${Date.now()}.csv"`);
-        res.send('No data available');
-        return;
-      }
-      
-      const query = `
+      const query = new QueryStream(`
         SELECT 
-          r.id,
+          r.id as response_id,
           r.respondent_name,
           r.started_at,
           r.completed_at,
-          a.question_id,
+          a.metadata->>'blockId' as question_id,
           a.answer_text,
           a.answer_choice_ids,
           a.video_url,
@@ -440,123 +440,170 @@ class AdminController {
         FROM responses r
         LEFT JOIN answers a ON r.id = a.response_id
         WHERE r.survey_id = $1
-        ORDER BY r.id, a.answered_at
-      `;
+        ORDER BY r.started_at, a.answered_at
+      `, [surveyId]);
 
-      const result = await db.query(query, [surveyId]);
+      const queryStream = client.query(query);
+      const csvStream = format({ headers: true });
 
-      // Format as CSV
-      const csv = this.formatAsCSV(result.rows);
+      const transformer = new Transform({
+        objectMode: true,
+        transform(row, _encoding, callback) {
+          // This simplified transform creates one CSV row per answer.
+          // The original implementation tried to pivot data, which is complex and slow.
+          // This format is much more performant and standard for data analysis.
+          const flatRow = {
+            response_id: row.response_id,
+            respondent_name: row.respondent_name,
+            question_id: row.question_id,
+            answer: this._formatAnswer(row),
+            started_at: row.started_at ? new Date(row.started_at).toISOString() : '',
+            completed_at: row.completed_at ? new Date(row.completed_at).toISOString() : '',
+          };
+          callback(null, flatRow);
+        },
+        _formatAnswer(row) {
+          if (row.video_url) return row.video_url;
+          if (row.answer_choice_ids && row.answer_choice_ids.length > 0) return row.answer_choice_ids.join('; ');
+          if (row.metadata && row.question_id === 'b9') {
+            const scales = ['traditional_innovative', 'corporate_community', 'transactional_relationship', 'behind_visible', 'exclusive_inclusive'];
+            return scales.map(scale => `${scale.replace(/_/g, '-')}: ${row.metadata[scale] || 'N/A'}`).join('; ');
+          }
+          if (row.metadata && row.question_id === 'b19') {
+            const demo = row.metadata;
+            const parts = [];
+            if (demo.user_age) parts.push(`Age: ${demo.user_age}`);
+            if (demo.user_zip) parts.push(`ZIP: ${demo.user_zip}`);
+            if (demo.giving_level) parts.push(`Giving: ${demo.giving_level}`);
+            if (demo.race_ethnicity) parts.push(`Race: ${Array.isArray(demo.race_ethnicity) ? demo.race_ethnicity.join(', ') : demo.race_ethnicity}`);
+            if (demo.gender_identity) parts.push(`Gender: ${demo.gender_identity}`);
+            return parts.join('; ');
+          }
+          return row.answer_text || '';
+        }
+      });
 
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="survey-export-${Date.now()}.csv"`);
-      res.send(csv);
+      res.setHeader('Content-Disposition', `attachment; filename="survey-export-${surveyId}-${Date.now()}.csv"`);
+
+      queryStream.pipe(transformer).pipe(csvStream).pipe(res);
+
+      queryStream.on('error', (err) => {
+        logger.error('Error streaming from database', { error: err });
+        client.release();
+        if (!res.headersSent) {
+          res.status(500).send('Error streaming data');
+        }
+      });
+
+      queryStream.on('end', () => {
+        logger.info('Database stream finished successfully.');
+        client.release();
+      });
+
     } catch (error) {
+      logger.error('Error setting up CSV export stream', { error });
+      client.release();
       next(error);
-      return;
     }
   }
 
-  async getQuestionStats(req: Request, res: Response, next: NextFunction) {
+    async getQuestionStats(req: Request, res: Response, next: NextFunction) {
     try {
       const db = getDb();
-      
       if (!db) {
         return res.json({ questionStats: [] });
       }
 
-      // Get all single-choice and multi-choice questions from survey structure
       const surveyStructure = require('../database/survey-structure.json');
-      const questions = [];
-      
-      // Extract questions that we want analytics for
-      for (const [blockId, block] of Object.entries(surveyStructure.blocks)) {
-        const blockData = block as any;
-        if (blockData.type === 'single-choice' || blockData.type === 'multi-choice' || 
-            blockData.type === 'yes-no' || blockData.type === 'quick-reply') {
-          questions.push({
+      const questions = Object.entries(surveyStructure.blocks)
+        .filter(([, block]) => {
+          const b = block as any;
+          return ['single-choice', 'multi-choice', 'yes-no', 'quick-reply', 'scale'].includes(b.type);
+        })
+        .map(([blockId, block]) => {
+          const b = block as any;
+          return {
             id: blockId,
-            text: typeof blockData.content === 'string' ? blockData.content : blockData.content?.default || blockData.content?.['non-supporter'] || '',
-            type: blockData.type,
-            options: blockData.options || []
-          });
-        }
+            text: typeof b.content === 'string' ? b.content : b.content?.default || b.content?.['non-supporter'] || '',
+            type: b.type,
+            options: b.options || []
+          };
+        });
+
+      const questionIds = questions.map(q => q.id);
+      if (questionIds.length === 0) {
+        return res.json({ questionStats: [] });
       }
 
-      // Get answer statistics for each question
-      const questionStats = [];
+      const statsQuery = `
+        SELECT 
+          metadata->>'blockId' as "questionId",
+          answer_text,
+          answer_choice_ids,
+          COUNT(*) as count
+        FROM answers
+        WHERE metadata->>'blockId' = ANY($1::text[])
+        GROUP BY metadata->>'blockId', answer_text, answer_choice_ids
+      `;
       
-      for (const question of questions) {
-        // The answers table stores the original block ID in the metadata field
-        // We need to query using the metadata field to find answers for each block
-        const statsQuery = `
-          SELECT 
-            a.answer_text,
-            a.answer_choice_ids,
-            COUNT(*) as count
-          FROM answers a
-          WHERE a.metadata->>'blockId' = $1
-          GROUP BY a.answer_text, a.answer_choice_ids
-        `;
-        
-        const result = await db.query(statsQuery, [question.id]);
-        
-        // Calculate distribution
+      const result = await db.query(statsQuery, [questionIds]);
+      
+      const statsByQuestion = result.rows.reduce((acc, row) => {
+        const questionId = row.questionId;
+        if (!acc[questionId]) {
+          acc[questionId] = [];
+        }
+        acc[questionId].push(row);
+        return acc;
+      }, {});
+
+      const questionStats = questions.map(question => {
+        const stats = statsByQuestion[question.id] || [];
+        if (stats.length === 0) return null;
+
+        const totalResponses = stats.reduce((sum, row) => sum + parseInt(row.count, 10), 0);
         const distribution = {};
-        let totalResponses = 0;
-        
-        for (const row of result.rows) {
-          const count = parseInt(row.count);
-          totalResponses += count;
-          
+
+        stats.forEach(row => {
+          const count = parseInt(row.count, 10);
           if (row.answer_choice_ids && row.answer_choice_ids.length > 0) {
-            // Multi-choice answers
-            for (const choiceId of row.answer_choice_ids) {
+            row.answer_choice_ids.forEach(choiceId => {
               distribution[choiceId] = (distribution[choiceId] || 0) + count;
-            }
+            });
           } else if (row.answer_text) {
-            // Single-choice or text answers
             distribution[row.answer_text] = (distribution[row.answer_text] || 0) + count;
           }
-        }
-        
-        // Convert counts to percentages and map to option labels
-        const answerDistribution: Record<string, any> = {};
-        
+        });
+
+        const answerDistribution = {};
         if (question.options && question.options.length > 0) {
-          for (const option of question.options) {
+          question.options.forEach(option => {
             const optionData = option as any;
-            const count = distribution[optionData.value] || distribution[optionData.id] || 0;
-            // For multi-choice, use the count directly. For single-choice, calculate percentage from total responses
-            const divisor = question.type === 'multi-choice' ? totalResponses : totalResponses;
-            const percentage = divisor > 0 ? Math.round((count / divisor) * 100) : 0;
+            const value = optionData.value !== undefined ? String(optionData.value) : String(optionData.id);
+            const count = distribution[value] || 0;
             answerDistribution[optionData.label] = {
               count,
-              percentage
+              percentage: totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0
             };
-          }
+          });
         } else {
-          // For questions without predefined options
-          for (const [answer, count] of Object.entries(distribution)) {
-            const answerCount = count as number;
-            const percentage = totalResponses > 0 ? Math.round((answerCount / totalResponses) * 100) : 0;
+          Object.entries(distribution).forEach(([answer, count]) => {
             answerDistribution[answer] = {
-              count: answerCount,
-              percentage
+              count: count as number,
+              percentage: totalResponses > 0 ? Math.round(((count as number) / totalResponses) * 100) : 0
             };
-          }
-        }
-        
-        if (totalResponses > 0) {
-          questionStats.push({
-            questionId: question.id,
-            questionText: question.text,
-            questionType: question.type,
-            totalResponses,
-            answerDistribution
           });
         }
-      }
+
+        return {
+          questionId: question.id,
+          questionText: question.text,
+          questionType: question.type,
+          totalResponses,
+          answerDistribution
+        };
+      }).filter(q => q !== null);
       
       res.json({ questionStats });
     } catch (error) {
@@ -604,116 +651,7 @@ class AdminController {
     }
   }
 
-  private formatAsCSV(data: any[]): string {
-    if (data.length === 0) return 'No data available';
-
-    // Import question mapping
-    const questionMapping: Record<string, string> = {
-      'b1': 'Welcome Video',
-      'b2': 'Ready to Start?',
-      'b3': 'Name',
-      'b4': 'Connection Type',
-      'b5': 'Arts Involvement',
-      'b6': 'Arts Importance (1-5)',
-      'b7': 'GHAC Understanding',
-      'b8': 'Program Participation',
-      'b9': 'GHAC Perception (Scales)',
-      'b10': 'Satisfaction Level',
-      'b11': 'Most Valuable Programs',
-      'b12': 'Improvement Suggestions',
-      'b13': 'Underserved Communities',
-      'b14': 'Impact Areas Ranking',
-      'b15': 'Giving Decision Factors',
-      'b16': 'Communication Preference',
-      'b17': 'Recommendation Likelihood (1-5)',
-      'b18': 'Demographics Consent',
-      'b19': 'Demographics'
-    };
-
-    // Group by response ID
-    const responseMap = new Map();
-    data.forEach(row => {
-      if (!responseMap.has(row.id)) {
-        responseMap.set(row.id, {
-          id: row.id,
-          respondent_name: row.respondent_name || 'Anonymous',
-          started_at: new Date(row.started_at).toLocaleString(),
-          completed_at: row.completed_at ? new Date(row.completed_at).toLocaleString() : 'In Progress',
-          answers: {}
-        });
-      }
-      
-      // Get block ID from metadata
-      const blockId = row.metadata?.blockId || row.question_id;
-      
-      // Format the answer based on type
-      let formattedAnswer = '';
-      
-      if (row.video_url) {
-        formattedAnswer = row.video_url;
-      } else if (row.answer_choice_ids && row.answer_choice_ids.length > 0) {
-        formattedAnswer = row.answer_choice_ids.join('; ');
-      } else if (row.metadata && blockId === 'b9') {
-        // Semantic differential
-        const scales = ['traditional_innovative', 'corporate_community', 'transactional_relationship', 
-                       'behind_visible', 'exclusive_inclusive'];
-        formattedAnswer = scales.map(scale => 
-          `${scale.replace(/_/g, '-')}: ${row.metadata[scale] || 'N/A'}`
-        ).join('; ');
-      } else if (row.metadata && blockId === 'b19') {
-        // Demographics
-        const demo = row.metadata;
-        const parts = [];
-        if (demo.user_age) parts.push(`Age: ${demo.user_age}`);
-        if (demo.user_zip) parts.push(`ZIP: ${demo.user_zip}`);
-        if (demo.giving_level) parts.push(`Giving: $${demo.giving_level}`);
-        if (demo.race_ethnicity) {
-          parts.push(`Race: ${Array.isArray(demo.race_ethnicity) ? demo.race_ethnicity.join(', ') : demo.race_ethnicity}`);
-        }
-        if (demo.gender_identity) parts.push(`Gender: ${demo.gender_identity}`);
-        formattedAnswer = parts.join('; ');
-      } else if (row.answer_text) {
-        formattedAnswer = row.answer_text;
-      }
-      
-      responseMap.get(row.id).answers[blockId] = formattedAnswer;
-    });
-
-    // Get all unique block IDs in survey order
-    const blockOrder = ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9', 
-                       'b10', 'b11', 'b12', 'b13', 'b14', 'b15', 'b16', 'b17', 'b18', 'b19'];
-    const presentBlocks = [...new Set(data.map(row => row.metadata?.blockId || row.question_id))]
-      .filter(id => blockOrder.includes(id))
-      .sort((a, b) => blockOrder.indexOf(a) - blockOrder.indexOf(b));
-
-    // Build CSV with proper escaping
-    const headers = ['Response ID', 'Name', 'Started', 'Completed', 
-                    ...presentBlocks.map(id => questionMapping[id] || id)];
-    
-    const rows = [headers.map(h => `"${h}"`).join(',')];
-
-    responseMap.forEach(response => {
-      const row = [
-        response.id,
-        response.respondent_name,
-        response.started_at,
-        response.completed_at,
-        ...presentBlocks.map(blockId => {
-          const answer = response.answers[blockId] || '';
-          // Escape quotes and wrap in quotes if contains comma, newline, or quote
-          const escaped = answer.toString().replace(/"/g, '""');
-          return /[,\n"]/.test(escaped) ? `"${escaped}"` : escaped;
-        })
-      ];
-      rows.push(row.map(cell => {
-        const str = cell.toString();
-        const escaped = str.replace(/"/g, '""');
-        return /[,\n"]/.test(escaped) ? `"${escaped}"` : escaped;
-      }).join(','));
-    });
-
-    return rows.join('\n');
-  }
+  
 }
 
 export const adminController = new AdminController();

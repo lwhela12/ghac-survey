@@ -99,32 +99,36 @@ const clearStoredSession = () => {
 
 export const surveyApi = {
   startSurvey: async (name: string) => {
-    console.log('Starting survey with name:', name);
     try {
       const response = await api.post('/api/survey/start', {
         name,
-        // Use ID matching backend survey-structure.json
         surveyId: '11111111-1111-1111-1111-111111111111',
       });
-      console.log('Survey start response:', response.data);
       currentSessionId = response.data.sessionId;
-      
-      // Save session to localStorage
       saveSession(response.data.sessionId);
-      
       return response.data;
-    } catch (error) {
-      console.error('Survey start error:', error);
-      throw error;
+    } catch (err) {
+      let errorMessage = 'An unknown error occurred during survey start.';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.message || err.message;
+        console.error('Survey start Axios error:', {
+          message: errorMessage,
+          status: err.response?.status,
+          data: err.response?.data
+        });
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+        console.error('Survey start generic error:', err);
+      } else {
+        console.error('Survey start unknown error:', err);
+      }
+      throw new Error(errorMessage);
     }
   },
   
   checkExistingSession: async (): Promise<{ exists: boolean; sessionId?: string; state?: any }> => {
     const storedSessionId = getStoredSession();
-    
-    if (!storedSessionId) {
-      return { exists: false };
-    }
+    if (!storedSessionId) return { exists: false };
     
     try {
       const response = await api.get(`/api/survey/state/${storedSessionId}`);
@@ -134,47 +138,78 @@ export const surveyApi = {
         sessionId: storedSessionId,
         state: response.data
       };
-    } catch (error) {
-      // Session no longer valid on server
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        console.log('Session not found on server, clearing local session.');
+      } else {
+        console.error('Error checking existing session:', err);
+      }
       clearStoredSession();
       return { exists: false };
     }
   },
   
   resumeSurvey: async (sessionId: string) => {
-    currentSessionId = sessionId;
-    const response = await api.get(`/api/survey/state/${sessionId}`);
-    return response.data;
+    try {
+      currentSessionId = sessionId;
+      const response = await api.get(`/api/survey/state/${sessionId}`);
+      return response.data;
+    } catch (err) {
+      let errorMessage = 'An unknown error occurred while resuming survey.';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.message || err.message;
+      }
+      throw new Error(errorMessage);
+    }
   },
 
   submitAnswer: async (questionId: string, answer: any) => {
     if (!currentSessionId) throw new Error('No active session');
-    
-    
-    const response = await api.post('/api/survey/answer', {
-      sessionId: currentSessionId,
-      questionId,
-      answer,
-    });
-    return response.data;
+    try {
+      const response = await api.post('/api/survey/answer', {
+        sessionId: currentSessionId,
+        questionId,
+        answer,
+      });
+      return response.data;
+    } catch (err) {
+      let errorMessage = 'An unknown error occurred while submitting answer.';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.message || err.message;
+      }
+      throw new Error(errorMessage);
+    }
   },
 
   completeSurvey: async () => {
     if (!currentSessionId) throw new Error('No active session');
-    const response = await api.post('/api/survey/complete', {
-      sessionId: currentSessionId,
-    });
-    currentSessionId = null;
-    
-    // Clear stored session on completion
-    clearStoredSession();
-    
-    return response.data;
+    try {
+      const response = await api.post('/api/survey/complete', {
+        sessionId: currentSessionId,
+      });
+      currentSessionId = null;
+      clearStoredSession();
+      return response.data;
+    } catch (err) {
+      let errorMessage = 'An unknown error occurred while completing survey.';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.message || err.message;
+      }
+      throw new Error(errorMessage);
+    }
   },
 
   getSurveyState: async (sessionId: string) => {
-    const response = await api.get(`/api/survey/state/${sessionId}`);
-    return response.data;
+    try {
+      const response = await api.get(`/api/survey/state/${sessionId}`);
+      return response.data;
+    } catch (err) {
+      let errorMessage = 'An unknown error occurred while fetching survey state.';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.message || err.message;
+      }
+      throw new Error(errorMessage);
+    }
   },
 };
 

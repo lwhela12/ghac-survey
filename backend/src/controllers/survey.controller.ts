@@ -45,7 +45,7 @@ class SurveyController {
       const { sessionId, questionId, answer } = req.body;
       
       // Debug logging
-      logger.info(`Answer submission received: questionId=${questionId}, sessionId=${sessionId}`);
+      logger.debug(`Answer submission received: questionId=${questionId}, sessionId=${sessionId}`);
       
 
       // Validate session exists
@@ -79,7 +79,7 @@ class SurveyController {
       
       // Debug logging for VideoAsk questions
       if (questionId === 'b7' || questionId === 'b12') {
-        logger.info(`VideoAsk answer submitted: ${questionId} -> ${nextQuestion?.id}`);
+        logger.debug(`VideoAsk answer submitted: ${questionId} -> ${nextQuestion?.id}`);
       }
 
       // Calculate progress

@@ -112,7 +112,6 @@ const surveySlice = createSlice({
         state.error = null;
       })
       .addCase(startSurvey.fulfilled, (state, action) => {
-        console.log('Survey start fulfilled with payload:', action.payload);
         state.isLoading = false;
         state.sessionId = action.payload.sessionId;
         state.currentQuestion = action.payload.firstQuestion;
@@ -152,15 +151,6 @@ const surveySlice = createSlice({
         
         // Add next question as bot message if there is one
         if (action.payload.nextQuestion) {
-          // Debug logging for VideoAsk questions
-          if (action.payload.nextQuestion.type === 'videoask') {
-            console.log('Redux - Adding VideoAsk message:', {
-              questionId: action.payload.nextQuestion.id,
-              content: action.payload.nextQuestion.content,
-              videoAskFormId: action.payload.nextQuestion.videoAskFormId
-            });
-          }
-          
           // Create a deep copy of the question to avoid shared references
           try {
             const questionCopy = JSON.parse(JSON.stringify(action.payload.nextQuestion));

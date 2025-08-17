@@ -12,7 +12,7 @@ if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '') {
   try {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      max: 20,
+      max: 50, // Increased for 2000 concurrent users
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     });

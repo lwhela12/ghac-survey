@@ -1,5 +1,5 @@
 // frontend/src/components/Survey/ChatMessage.tsx
-import React, { useEffect, forwardRef } from 'react';
+import React, { useEffect, forwardRef, memo } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import amandaIcon from '../../assets/images/Amanda_icon.png';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -176,7 +176,7 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
               <VideoAskQuestion 
                 question={message.question}
                 onAnswer={handleVideoAskAnswer}
-                disabled={false}
+                disabled={!isCurrentQuestion}
               />
             </VideoAskWrapper>
             <Timestamp type={message.type}>{formatTime(message.timestamp)}</Timestamp>
@@ -370,4 +370,4 @@ const GifImage = styled.img`
   box-shadow: ${({ theme }) => theme.shadows.md};
 `;
 
-export default ChatMessage;
+export default memo(ChatMessage);

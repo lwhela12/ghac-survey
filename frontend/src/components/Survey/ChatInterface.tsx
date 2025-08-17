@@ -1,6 +1,6 @@
 // frontend/src/components/Survey/ChatInterface.tsx
-import React, { useEffect, useRef, useState } from 'react';
-import styled, { keyframes, css } from 'styled-components';
+import React, { useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import styled, { keyframes } from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
   startSurvey, 
@@ -32,11 +32,6 @@ const fadeIn = keyframes`
   to { opacity: 1; }
 `;
 
-const fadeOut = keyframes`
-  from { opacity: 1; }
-  to { opacity: 0; }
-`;
-
 const bounce = keyframes`
   0%, 20%, 50%, 80%, 100% {
     transform: translateY(0);
@@ -61,82 +56,37 @@ const ChatInterface: React.FC = () => {
   // --- Refs ---
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const questionAreaRef = useRef<HTMLDivElement>(null);
 
-  // --- State ---
-  const [showScrollHint, setShowScrollHint] = useState(false);
 
-  // --- Scrolling Logic ---
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = chatContainerRef.current;
-    if (!container) return;
+    const bottom = bottomRef.current;
+    if (!container || !bottom) return;
 
-    const handleScroll = () => {
-      // Hide hint as soon as user starts scrolling
-      if (showScrollHint) {
-        setShowScrollHint(false);
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [showScrollHint]);
-
-
-  useEffect(() => {
-    // This is the main scrolling effect.
-    // It waits for animations to finish, then decides HOW to scroll.
-    if (isTyping) {
-      // If the bot is typing, just scroll to the bottom to show the indicator
-      const t = setTimeout(() => {
-        chatContainerRef.current?.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          behavior: 'smooth',
-        });
-      }, 100);
-      return () => clearTimeout(t);
-    }
-
-    // 550ms delay: 500ms for QuestionArea animation + 50ms buffer
-    const scrollTimeout = setTimeout(() => {
-      const container = chatContainerRef.current;
-      const lastMessage = lastMessageRef.current;
-      const questionArea = questionAreaRef.current;
-
-      if (!container) return;
-
-      // Check if an interactive question area is visible
-      if (questionArea && lastMessage) {
-        const containerHeight = container.clientHeight;
-        const questionAreaHeight = questionArea.offsetHeight;
-        const lastMessageHeight = lastMessage.offsetHeight;
-        
-        // If combined height of question + answers is taller than visible area, scroll question to top
-        if ((questionAreaHeight + lastMessageHeight) > containerHeight) {
-          lastMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-          // After scrolling, check if a hint is needed
-          const hintTimeout = setTimeout(() => {
-            const isScrollable = container.scrollHeight > container.clientHeight && 
-                                 container.scrollTop + container.clientHeight < container.scrollHeight - 10;
-            setShowScrollHint(isScrollable);
-          }, 500); // Wait for scroll to finish
-          return () => clearTimeout(hintTimeout);
-
-        } else {
-          // Otherwise, scroll to the very bottom
-          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    // Double RAF to ensure the DOM has fully painted new content before scrolling
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => {
+        const qa = questionAreaRef.current;
+        if (qa) {
+          const qaHeight = qa.offsetHeight;
+          const containerHeight = container.clientHeight;
+          if (qaHeight <= containerHeight) {
+            qa.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+          }
         }
-      } else {
-        // For simple messages without a question area, just scroll to bottom
-        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-      }
-    }, 550);
-
-    return () => clearTimeout(scrollTimeout);
-
-  }, [currentQuestion, isTyping]);
+        bottom.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
+      (bottom as any)._raf2 = raf2;
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      const nested = (bottom as any)._raf2;
+      if (nested) cancelAnimationFrame(nested);
+    };
+  }, [messages.length, isTyping, currentQuestion?.id]);
 
 
   // --- Auto-advance & Redirect Logic ---
@@ -198,11 +148,16 @@ const ChatInterface: React.FC = () => {
         setTimeout(() => dispatch(setTyping(false)), 600);
       }
     } catch (error) {
+      console.error('Error submitting answer:', error);
       setTimeout(() => dispatch(setTyping(false)), 600);
+      // Optionally show an error message to the user
+      dispatch(addBotMessage({ 
+        content: "Sorry, there was an issue saving your response. Please try again." 
+      }));
     }
   };
 
-  const formatAnswerForDisplay = (answer: any, questionType: string): string => {
+  const formatAnswerForDisplay = useCallback((answer: any, questionType: string): string => {
     if (questionType === 'text-input' || questionType === 'text-input-followup') {
       return answer || '';
     }
@@ -238,7 +193,7 @@ const ChatInterface: React.FC = () => {
       if (answer.type === 'skipped') return 'Skipped';
     }
     return String(answer);
-  };
+  }, [currentQuestion]);
 
   // --- Render ---
 
@@ -247,12 +202,12 @@ const ChatInterface: React.FC = () => {
       <ArtisticBackground />
       <ChatContainer ref={chatContainerRef}>
         <ChatContent>
-          {messages.map((message, index) => {
+          {messages.map((message) => {
             const isLastBotMessage = message.type === 'bot' && 
-                                     index === messages.length - 1;
+                                     message === messages[messages.length - 1];
             return (
               <ChatMessage 
-                key={`${message.id}-${index}`} 
+                key={message.id}
                 ref={isLastBotMessage ? lastMessageRef : null}
                 message={message} 
               />
@@ -312,12 +267,8 @@ const ChatInterface: React.FC = () => {
               </WelcomeCard>
             </WelcomeArea>
           )}
+          <BottomSentinel ref={bottomRef} />
         </ChatContent>
-        <ScrollHint $visible={showScrollHint}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14M19 12l-7 7-7-7"/>
-          </svg>
-        </ScrollHint>
       </ChatContainer>
     </Container>
   );
@@ -492,28 +443,8 @@ const ButtonIcon = styled.span`
   animation: ${bounce} 2s infinite;
 `;
 
-const ScrollHint = styled.div<{$visible: boolean}>`
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 40px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  z-index: 10;
-  pointer-events: none;
-  
-  opacity: 0;
-  animation: ${({ $visible }) => $visible ? css`${fadeIn} 0.3s forwards` : css`${fadeOut} 0.3s forwards`};
-  
-  svg {
-    animation: ${bounce} 1.5s infinite;
-  }
+const BottomSentinel = styled.div`
+  height: 1px;
 `;
 
 export default ChatInterface;

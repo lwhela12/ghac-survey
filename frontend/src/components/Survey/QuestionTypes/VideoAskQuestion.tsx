@@ -12,13 +12,7 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasResponded, setHasResponded] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect mobile on component mount
-  useEffect(() => {
-    const mobileCheck = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    setIsMobile(mobileCheck);
-  }, []);
+  // No device sniffing needed when loading paused
 
   useEffect(() => {
     const loadingTimeout = setTimeout(() => setIsLoading(false), 3000);
@@ -63,27 +57,13 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
   }, [question.id, onAnswer, hasResponded]);
 
   const handleSkip = () => {
-    // Stop/pause the video by removing and re-adding the iframe
-    if (iframeRef.current) {
-      // Store the current src
-      const currentSrc = iframeRef.current.src;
-      // Remove src to stop video
-      iframeRef.current.src = 'about:blank';
-      // Optionally restore src but without autoplay to fully reset
-      // This ensures the video is stopped but could be replayed if needed
-      setTimeout(() => {
-        if (iframeRef.current) {
-          iframeRef.current.src = currentSrc.replace('autoplay=1', 'autoplay=0');
-        }
-      }, 100);
-    }
+    // Do not manipulate iframe state; just submit skip
     onAnswer({ type: 'skipped' });
   };
 
-  // Conditionally set the URL based on device type
-  const videoAskSrc = isMobile
-    ? `https://www.videoask.com/${question.videoAskFormId}?delay_response=1`
-    : `https://www.videoask.com/${question.videoAskFormId}?autoplay=1&muted=1&delay_response=1`;
+  // Load paused with audio ready (no autoplay, not muted) to mirror intro behavior
+  // playsinline to avoid fullscreen on mobile
+  const videoAskSrc = `https://www.videoask.com/${question.videoAskFormId}?autoplay=0&muted=0&playsinline=1&delay_response=1`;
 
   return (
     <Container>
@@ -98,6 +78,8 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
         <StyledIframe
           ref={iframeRef}
           src={videoAskSrc}
+          loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
           allow="camera; microphone; autoplay; encrypted-media; fullscreen; display-capture;"
           title="Video question from Amanda"
         />

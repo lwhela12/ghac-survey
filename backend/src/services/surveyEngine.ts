@@ -269,7 +269,7 @@ class SurveyEngine {
       nextBlockId = currentBlock.next as string;
       // Debug logging for VideoAsk questions
       if (currentQuestionId === 'b12' || currentQuestionId === 'b7') {
-        logger.info(`VideoAsk navigation: ${currentQuestionId} -> ${nextBlockId}`);
+        logger.debug(`VideoAsk navigation: ${currentQuestionId} -> ${nextBlockId}`);
       }
     }
 
@@ -332,7 +332,7 @@ class SurveyEngine {
       
       // Special logging for VideoAsk questions
       if (nextBlock && nextBlock.type === 'videoask') {
-        logger.info(`Returning VideoAsk block: ${nextBlockId}`, {
+        logger.debug(`Returning VideoAsk block: ${nextBlockId}`, {
           id: nextBlock.id,
           type: nextBlock.type,
           videoAskFormId: nextBlock.videoAskFormId,
@@ -367,9 +367,11 @@ class SurveyEngine {
 
   private evaluateCondition(condition: any, variables: Record<string, any>): boolean {
     if ('variable' in condition && 'equals' in condition) {
-      // Handle array comparisons
+      // Handle array comparisons without mutating the originals
       if (Array.isArray(condition.equals) && Array.isArray(variables[condition.variable])) {
-        return JSON.stringify(condition.equals.sort()) === JSON.stringify(variables[condition.variable].sort());
+        const a = [...condition.equals].sort();
+        const b = [...variables[condition.variable]].sort();
+        return JSON.stringify(a) === JSON.stringify(b);
       }
       return variables[condition.variable] === condition.equals;
     }

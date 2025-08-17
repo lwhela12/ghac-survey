@@ -7,8 +7,8 @@ const router = Router();
 // VideoAsk webhook endpoint
 router.post('/videoask', async (req: Request, res: Response) => {
   try {
-    // Log the entire webhook payload for debugging
-    logger.info('VideoAsk webhook received:', {
+    // Log the webhook payload at debug level (avoid PII at info)
+    logger.debug('VideoAsk webhook received:', {
       headers: req.headers,
       body: req.body,
       timestamp: new Date().toISOString()
@@ -26,7 +26,7 @@ router.post('/videoask', async (req: Request, res: Response) => {
     const answers = Array.isArray(contact?.answers) ? contact.answers : [];
 
     // Log specific event details
-    logger.info('VideoAsk webhook event:', {
+    logger.debug('VideoAsk webhook event:', {
       event_type,
       event_id,
       interaction_id,
@@ -38,7 +38,7 @@ router.post('/videoask', async (req: Request, res: Response) => {
     
     // Log the answers structure to understand it better
     if (answers && answers.length > 0) {
-      logger.info('VideoAsk answers:', JSON.stringify(answers, null, 2));
+      logger.debug('VideoAsk answers:', JSON.stringify(answers, null, 2));
     }
 
     // VideoAsk form share IDs map to our survey-engine block IDs
@@ -46,7 +46,7 @@ router.post('/videoask', async (req: Request, res: Response) => {
       'fcb71j5f2': 'b7',  // Personal story
       'fdmk80eer': 'b12'  // Magic wand
     };
-    logger.info('VideoAsk share-to-block mapping', { shareId: form?.share_id, mapping: questionIdMap });
+    logger.debug('VideoAsk share-to-block mapping', { shareId: form?.share_id, mapping: questionIdMap });
 
     // Process the webhook only for form_response events
     if (event_type === 'form_response' && answers && answers.length > 0) {
@@ -59,7 +59,7 @@ router.post('/videoask', async (req: Request, res: Response) => {
       const transcript = videoAnswer?.answer?.transcript || videoAnswer?.transcript;
       const duration = videoAnswer?.answer?.duration || videoAnswer?.media_duration;
       
-      logger.info('Processing VideoAsk response:', {
+      logger.debug('Processing VideoAsk response:', {
         formId: form?.form_id,
         formShareId: form?.share_id,
         questionId: questionIdMap[form?.share_id] || 'unknown',
@@ -75,7 +75,7 @@ router.post('/videoask', async (req: Request, res: Response) => {
       if (db && mediaUrl) {
         // Determine which block to update based on form share ID
         const questionId = questionIdMap[form?.share_id] || 'b7';
-        logger.info('VideoAsk will update answer block', { formShareId: form?.share_id, questionId, mediaUrl });
+        logger.debug('VideoAsk will update answer block', { formShareId: form?.share_id, questionId, mediaUrl });
         
         const updateQuery = `
           UPDATE answers

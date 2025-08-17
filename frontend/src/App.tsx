@@ -10,33 +10,36 @@ import AdminDashboard from './pages/AdminDashboard';
 import ClerkPrivateRoute from './components/Admin/ClerkPrivateRoute';
 import ClerkSignIn from './pages/ClerkSignIn';
 import ClerkSignUp from './pages/ClerkSignUp';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
 function App() {
   return (
-    <Provider store={store}>
-      <ClerkProvider publishableKey={clerkPubKey}>
-        <ThemeProvider theme={theme}>
-          <GlobalStyle />
-          <Router>
-            <Routes>
-              <Route path="/" element={<SurveyPage />} />
-              <Route path="/admin/sign-in" element={<ClerkSignIn />} />
-              <Route path="/admin/sign-up" element={<ClerkSignUp />} />
-              <Route
-                path="/admin/*"
-                element={
-                  <ClerkPrivateRoute>
-                    <AdminDashboard />
-                  </ClerkPrivateRoute>
-                }
-              />
-            </Routes>
-          </Router>
-        </ThemeProvider>
-      </ClerkProvider>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <ClerkProvider publishableKey={clerkPubKey}>
+          <ThemeProvider theme={theme}>
+            <GlobalStyle />
+            <Router>
+              <Routes>
+                <Route path="/" element={<SurveyPage />} />
+                <Route path="/admin/sign-in" element={<ClerkSignIn />} />
+                <Route path="/admin/sign-up" element={<ClerkSignUp />} />
+                <Route
+                  path="/admin/*"
+                  element={
+                    <ClerkPrivateRoute>
+                      <AdminDashboard />
+                    </ClerkPrivateRoute>
+                  }
+                />
+              </Routes>
+            </Router>
+          </ThemeProvider>
+        </ClerkProvider>
+      </Provider>
+    </ErrorBoundary>
   );
 }
 

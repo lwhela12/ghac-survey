@@ -126,6 +126,8 @@ const VideoAutoplay: React.FC<VideoAutoplayProps> = ({ question, onComplete, dis
               ref={iframeRef}
               src={iframeUrl}
               // Always omit autoplay permission for intro; we load it paused
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
               allow={'encrypted-media; fullscreen; display-capture'}
               title="Welcome video from Amanda"
             />
