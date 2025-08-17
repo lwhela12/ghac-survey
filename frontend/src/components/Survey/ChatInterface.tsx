@@ -46,7 +46,8 @@ const ChatInterface: React.FC = () => {
     (state) => state.survey
   );
 
-  const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768;
+  const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
+  const isDesktop = () => typeof window !== 'undefined' && window.innerWidth >= 768;
 
   const scrollToBottom = () => {
     const el = chatContainerRef.current;
@@ -56,11 +57,57 @@ const ChatInterface: React.FC = () => {
     el.scrollTo({ top: target, behavior: 'smooth' });
   };
 
+  const scrollToQuestion = (questionId: string, topPadding = 12) => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    const el = container.querySelector(
+      `[data-question-id="${CSS.escape(questionId)}"]`
+    ) as HTMLElement | null;
+    if (!el) {
+      // Fallback: near-bottom scroll
+      scrollToBottom();
+      return;
+    }
+    if (isDesktop()) {
+      // Snap to top line on desktop
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    } else {
+      // Position question near the top on mobile
+      const containerRect = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const offset = elRect.top - containerRect.top + container.scrollTop - topPadding;
+      container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+    }
+  };
+
+  // Ensure the inline controls are fully visible on mobile (if they fit)
+  const ensureAnswersVisible = () => {
+    if (!isMobile()) return;
+    const container = chatContainerRef.current;
+    if (!container) return;
+    const controls = container.querySelector('[data-inline-controls="true"]') as HTMLElement | null;
+    if (!controls) return;
+
+    const available = container.clientHeight;
+    const controlsRect = controls.getBoundingClientRect();
+    const contRect = container.getBoundingClientRect();
+    const controlsHeight = controlsRect.height;
+
+    // If answers fit below the question, try to bring them fully into view
+    if (controlsHeight < available) {
+      const controlsBottom = controlsRect.bottom - contRect.top; // relative bottom
+      if (controlsBottom > available) {
+        const delta = controlsBottom - available + 8; // small margin
+        container.scrollTo({ top: container.scrollTop + delta, behavior: 'smooth' });
+      }
+    }
+  };
+
   const updateScrollHint = () => {
     const el = chatContainerRef.current;
     if (!el) return;
     const bottomGap = el.scrollHeight - (el.scrollTop + el.clientHeight);
-    const threshold = 48;
+    const threshold = 24;
     const shouldShow = isMobile() && bottomGap > threshold && !isTyping && !!currentQuestion;
     setShowScrollHint(shouldShow);
   };
@@ -68,13 +115,30 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     const delay = messages.length > 0 ? 200 : 100;
     const t = window.setTimeout(() => {
-      scrollToBottom();
+      if (currentQuestion?.id) {
+        scrollToQuestion(currentQuestion.id);
+        // After a frame, ensure answers are visible if they fit
+        window.requestAnimationFrame(() => ensureAnswersVisible());
+      } else {
+        scrollToBottom();
+      }
       updateScrollHint();
     }, delay);
     return () => window.clearTimeout(t);
   }, [messages, isTyping, currentQuestion]);
 
-  // Delay showing interactive controls to create a conversational stagger
+  // When the active question changes, anchor it near the top
+  useEffect(() => {
+    if (!currentQuestion?.id) return;
+    const raf = window.requestAnimationFrame(() => {
+      scrollToQuestion(currentQuestion.id);
+      window.requestAnimationFrame(() => ensureAnswersVisible());
+      updateScrollHint();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [currentQuestion?.id]);
+
+  // Delay showing interactive controls to create a conversational stagger (mobile only)
   useEffect(() => {
     const nonRenderableTypes = new Set([
       'dynamic-message',
@@ -83,7 +147,7 @@ const ChatInterface: React.FC = () => {
       'video-autoplay',
     ] as const);
 
-    const shouldDelay = !!currentQuestion && !isLoading && !isTyping &&
+    const shouldDelayMobile = isMobile() && !!currentQuestion && !isLoading && !isTyping &&
       !(nonRenderableTypes as any).has(currentQuestion.type as any);
 
     if (controlsDelayRef.current) {
@@ -91,13 +155,18 @@ const ChatInterface: React.FC = () => {
       controlsDelayRef.current = null;
     }
 
-    if (shouldDelay) {
+    if (shouldDelayMobile) {
       setControlsVisible(false);
       controlsDelayRef.current = window.setTimeout(() => {
         setControlsVisible(true);
+        if (currentQuestion?.id) {
+          // Re-anchor to the question after controls appear
+          scrollToQuestion(currentQuestion.id);
+        }
         updateScrollHint();
       }, 400) as unknown as number;
     } else {
+      // Desktop or non-interactive questions: controls immediately
       setControlsVisible(true);
       updateScrollHint();
     }
@@ -118,6 +187,13 @@ const ChatInterface: React.FC = () => {
     el.addEventListener('scroll', onScroll);
     updateScrollHint();
     return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Update on resize to handle orientation changes
+  useEffect(() => {
+    const onResize = () => updateScrollHint();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   // Auto-advance for dynamic-message questions and handle final-message redirect
@@ -285,7 +361,7 @@ const ChatInterface: React.FC = () => {
             if (!shouldRenderInline) return null;
 
             return (
-            <QuestionArea>
+            <QuestionArea data-inline-controls="true">
               {(currentQuestion.type === 'single-choice' ||
                 currentQuestion.type === 'multi-choice' ||
                 currentQuestion.type === 'quick-reply' ||
@@ -368,6 +444,11 @@ const ChatContainer = styled.div`
   overflow-x: hidden;
   position: relative;
   
+  /* Enable scroll snap on desktop for nicer manual scrolling */
+  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    scroll-snap-type: y proximity;
+  }
+  
   /* Custom scrollbar */
   &::-webkit-scrollbar {
     width: 8px;
@@ -390,7 +471,7 @@ const ChatContainer = styled.div`
 const ScrollHint = styled.button`
   position: absolute;
   left: 50%;
-  bottom: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0));
   transform: translateX(-50%);
   background: rgba(0,0,0,0.55);
   color: #fff;
@@ -400,10 +481,10 @@ const ScrollHint = styled.button`
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
-  z-index: 3;
+  z-index: 50;
   box-shadow: ${({ theme }) => theme.shadows.sm};
 
-  @media (min-width: ${({ theme }) => theme.breakpoints.mobile}) {
+  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
     display: none;
   }
 `;

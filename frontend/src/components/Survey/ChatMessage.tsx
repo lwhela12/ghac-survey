@@ -129,7 +129,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isCurrentQuestion = currentQuestion?.id === message.question?.id;
 
   return (
-    <Container type={message.type}>
+    <Container type={message.type} data-question-id={message.question?.id || undefined}>
       {message.type === 'bot' && <BotAvatar />}
       <MessageWrapper type={message.type}>
         {isVideoAutoplayMessage ? (
@@ -210,6 +210,12 @@ const Container = styled.div<{ type: 'bot' | 'user' | 'system' }>`
   margin-bottom: ${({ theme }) => theme.spacing.lg};
   animation: ${fadeInUp} 0.4s ease-out;
   animation-fill-mode: both;
+  
+  /* Desktop scroll snap for question alignment */
+  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
   
   ${({ type }) =>
     type === 'user' &&
