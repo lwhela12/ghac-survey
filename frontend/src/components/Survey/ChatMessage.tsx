@@ -1,5 +1,5 @@
 // frontend/src/components/Survey/ChatMessage.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, forwardRef } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import amandaIcon from '../../assets/images/Amanda_icon.png';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -17,7 +17,7 @@ interface ChatMessageProps {
   };
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, ref) => {
   const dispatch = useAppDispatch();
   const currentQuestion = useAppSelector(state => state.survey.currentQuestion);
   const [videoCompleted] = React.useState(false);
@@ -129,7 +129,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isCurrentQuestion = currentQuestion?.id === message.question?.id;
 
   return (
-    <Container type={message.type} data-question-id={message.question?.id || undefined}>
+    <Container ref={ref} type={message.type} data-question-id={message.question?.id || undefined}>
       {message.type === 'bot' && <BotAvatar />}
       <MessageWrapper type={message.type}>
         {isVideoAutoplayMessage ? (
@@ -192,7 +192,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       </MessageWrapper>
     </Container>
   );
-};
+});
 
 const fadeInUp = keyframes`
   from {

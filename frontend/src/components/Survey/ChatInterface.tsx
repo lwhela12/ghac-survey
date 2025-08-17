@@ -1,6 +1,6 @@
 // frontend/src/components/Survey/ChatInterface.tsx
 import React, { useEffect, useRef, useState } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
   startSurvey, 
@@ -14,7 +14,8 @@ import ChatMessage from './ChatMessage';
 import QuestionRenderer from './QuestionRenderer';
 import TypingIndicator from './TypingIndicator';
 
-// Define animations
+// --- Keyframes ---
+
 const fadeInUp = keyframes`
   from {
     opacity: 0;
@@ -27,176 +28,119 @@ const fadeInUp = keyframes`
 `;
 
 const fadeIn = keyframes`
-  from {
-    opacity: 0;
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
+const fadeOut = keyframes`
+  from { opacity: 1; }
+  to { opacity: 0; }
+`;
+
+const bounce = keyframes`
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
   }
-  to {
-    opacity: 1;
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
   }
 `;
 
+
+// --- Component ---
+
 const ChatInterface: React.FC = () => {
   const dispatch = useAppDispatch();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const controlsDelayRef = useRef<number | null>(null);
-  const [controlsVisible, setControlsVisible] = useState(true);
-  const [showScrollHint, setShowScrollHint] = useState(false);
   const { messages, currentQuestion, isTyping, isLoading, sessionId } = useAppSelector(
     (state) => state.survey
   );
 
-  const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
-  const isDesktop = () => typeof window !== 'undefined' && window.innerWidth >= 768;
+  // --- Refs ---
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+  const questionAreaRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    const el = chatContainerRef.current;
-    if (!el) return;
-    const margin = isMobile() ? 140 : 0;
-    const target = Math.max(0, el.scrollHeight - el.clientHeight - margin);
-    el.scrollTo({ top: target, behavior: 'smooth' });
-  };
+  // --- State ---
+  const [showScrollHint, setShowScrollHint] = useState(false);
 
-  const scrollToQuestion = (questionId: string, topPadding = 12) => {
+  // --- Scrolling Logic ---
+
+  useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
-    const el = container.querySelector(
-      `[data-question-id="${CSS.escape(questionId)}"]`
-    ) as HTMLElement | null;
-    if (!el) {
-      // Fallback: near-bottom scroll
-      scrollToBottom();
-      return;
-    }
-    if (isDesktop()) {
-      // Snap to top line on desktop
-      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    } else {
-      // Position question near the top on mobile
-      const containerRect = container.getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      const offset = elRect.top - containerRect.top + container.scrollTop - topPadding;
-      container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
-    }
-  };
 
-  // Ensure the inline controls are fully visible on mobile (if they fit)
-  const ensureAnswersVisible = () => {
-    if (!isMobile()) return;
-    const container = chatContainerRef.current;
-    if (!container) return;
-    const controls = container.querySelector('[data-inline-controls="true"]') as HTMLElement | null;
-    if (!controls) return;
-
-    const available = container.clientHeight;
-    const controlsRect = controls.getBoundingClientRect();
-    const contRect = container.getBoundingClientRect();
-    const controlsHeight = controlsRect.height;
-
-    // If answers fit below the question, try to bring them fully into view
-    if (controlsHeight < available) {
-      const controlsBottom = controlsRect.bottom - contRect.top; // relative bottom
-      if (controlsBottom > available) {
-        const delta = controlsBottom - available + 8; // small margin
-        container.scrollTo({ top: container.scrollTop + delta, behavior: 'smooth' });
-      }
-    }
-  };
-
-  const updateScrollHint = () => {
-    const el = chatContainerRef.current;
-    if (!el) return;
-    const bottomGap = el.scrollHeight - (el.scrollTop + el.clientHeight);
-    const threshold = 24;
-    const shouldShow = isMobile() && bottomGap > threshold && !isTyping && !!currentQuestion;
-    setShowScrollHint(shouldShow);
-  };
-
-  useEffect(() => {
-    const delay = messages.length > 0 ? 200 : 100;
-    const t = window.setTimeout(() => {
-      if (currentQuestion?.id) {
-        scrollToQuestion(currentQuestion.id);
-        // After a frame, ensure answers are visible if they fit
-        window.requestAnimationFrame(() => ensureAnswersVisible());
-      } else {
-        scrollToBottom();
-      }
-      updateScrollHint();
-    }, delay);
-    return () => window.clearTimeout(t);
-  }, [messages, isTyping, currentQuestion]);
-
-  // When the active question changes, anchor it near the top
-  useEffect(() => {
-    if (!currentQuestion?.id) return;
-    const raf = window.requestAnimationFrame(() => {
-      scrollToQuestion(currentQuestion.id);
-      window.requestAnimationFrame(() => ensureAnswersVisible());
-      updateScrollHint();
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [currentQuestion?.id]);
-
-  // Delay showing interactive controls to create a conversational stagger (mobile only)
-  useEffect(() => {
-    const nonRenderableTypes = new Set([
-      'dynamic-message',
-      'final-message',
-      'videoask',
-      'video-autoplay',
-    ] as const);
-
-    const shouldDelayMobile = isMobile() && !!currentQuestion && !isLoading && !isTyping &&
-      !(nonRenderableTypes as any).has(currentQuestion.type as any);
-
-    if (controlsDelayRef.current) {
-      window.clearTimeout(controlsDelayRef.current);
-      controlsDelayRef.current = null;
-    }
-
-    if (shouldDelayMobile) {
-      setControlsVisible(false);
-      controlsDelayRef.current = window.setTimeout(() => {
-        setControlsVisible(true);
-        if (currentQuestion?.id) {
-          // Re-anchor to the question after controls appear
-          scrollToQuestion(currentQuestion.id);
-        }
-        updateScrollHint();
-      }, 400) as unknown as number;
-    } else {
-      // Desktop or non-interactive questions: controls immediately
-      setControlsVisible(true);
-      updateScrollHint();
-    }
-
-    return () => {
-      if (controlsDelayRef.current) {
-        window.clearTimeout(controlsDelayRef.current);
-        controlsDelayRef.current = null;
+    const handleScroll = () => {
+      // Hide hint as soon as user starts scrolling
+      if (showScrollHint) {
+        setShowScrollHint(false);
       }
     };
-  }, [currentQuestion, isLoading, isTyping]);
 
-  // Update scroll hint on user scrolling
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [showScrollHint]);
+
+
   useEffect(() => {
-    const el = chatContainerRef.current;
-    if (!el) return;
-    const onScroll = () => updateScrollHint();
-    el.addEventListener('scroll', onScroll);
-    updateScrollHint();
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
+    // This is the main scrolling effect.
+    // It waits for animations to finish, then decides HOW to scroll.
+    if (isTyping) {
+      // If the bot is typing, just scroll to the bottom to show the indicator
+      const t = setTimeout(() => {
+        chatContainerRef.current?.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      }, 100);
+      return () => clearTimeout(t);
+    }
 
-  // Update on resize to handle orientation changes
-  useEffect(() => {
-    const onResize = () => updateScrollHint();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+    // 550ms delay: 500ms for QuestionArea animation + 50ms buffer
+    const scrollTimeout = setTimeout(() => {
+      const container = chatContainerRef.current;
+      const lastMessage = lastMessageRef.current;
+      const questionArea = questionAreaRef.current;
 
-  // Auto-advance for dynamic-message questions and handle final-message redirect
+      if (!container) return;
+
+      // Check if an interactive question area is visible
+      if (questionArea && lastMessage) {
+        const containerHeight = container.clientHeight;
+        const questionAreaHeight = questionArea.offsetHeight;
+        const lastMessageHeight = lastMessage.offsetHeight;
+        
+        // If combined height of question + answers is taller than visible area, scroll question to top
+        if ((questionAreaHeight + lastMessageHeight) > containerHeight) {
+          lastMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          // After scrolling, check if a hint is needed
+          const hintTimeout = setTimeout(() => {
+            const isScrollable = container.scrollHeight > container.clientHeight && 
+                                 container.scrollTop + container.clientHeight < container.scrollHeight - 10;
+            setShowScrollHint(isScrollable);
+          }, 500); // Wait for scroll to finish
+          return () => clearTimeout(hintTimeout);
+
+        } else {
+          // Otherwise, scroll to the very bottom
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+      } else {
+        // For simple messages without a question area, just scroll to bottom
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      }
+    }, 550);
+
+    return () => clearTimeout(scrollTimeout);
+
+  }, [currentQuestion, isTyping]);
+
+
+  // --- Auto-advance & Redirect Logic ---
+
   useEffect(() => {
     if (currentQuestion?.type === 'dynamic-message' && !isLoading) {
       const delay = currentQuestion.autoAdvanceDelay || 1500;
@@ -206,7 +150,6 @@ const ChatInterface: React.FC = () => {
       return () => clearTimeout(timer);
     }
     
-    // Handle final-message redirect
     if (currentQuestion?.type === 'final-message' && !isLoading) {
       if (currentQuestion.redirect) {
         const redirectDelay = currentQuestion.redirectDelay || 5000;
@@ -219,174 +162,141 @@ const ChatInterface: React.FC = () => {
   }, [currentQuestion, isLoading]);
 
 
+  // --- Answer Handling ---
+
   const handleAnswer = async (answer: any) => {
     if (!currentQuestion || isLoading) return;
 
-    // Check if this is a special action (like close or complete)
     if (answer && typeof answer === 'object' && answer.action) {
       if (answer.action === 'close' || answer.action === 'complete') {
-        // Show thank you message
         dispatch(addBotMessage({ content: "Thanks for your time! Starting fresh..." }));
-        
-        // Reset the survey after a short delay
-        setTimeout(() => {
-          dispatch(resetSurvey());
-        }, 2000);
-        
+        setTimeout(() => dispatch(resetSurvey()), 2000);
         return;
       }
     }
 
-    // Don't show user message for video-autoplay, videoask, or dynamic-message questions
-    if (currentQuestion.type !== 'video-autoplay' && 
-        currentQuestion.type !== 'videoask' && 
-        currentQuestion.type !== 'dynamic-message') {
-      // Add user message for visual feedback
+    const nonDisplayableAnswerTypes = new Set([
+        'video-autoplay', 
+        'videoask', 
+        'dynamic-message'
+    ]);
+
+    if (!nonDisplayableAnswerTypes.has(currentQuestion.type)) {
       const displayAnswer = formatAnswerForDisplay(answer, currentQuestion.type);
       dispatch(addUserMessage(displayAnswer));
     }
 
-    // Show typing indicator
     dispatch(setTyping(true));
 
-    // Submit answer
     try {
       const result = await dispatch(submitAnswer({ 
         questionId: currentQuestion.id, 
         answer 
       })).unwrap();
       
-      // Only stop typing if the next question is NOT a dynamic-message
       if (!result.nextQuestion || result.nextQuestion.type !== 'dynamic-message') {
-        setTimeout(() => {
-          dispatch(setTyping(false));
-        }, 600);
+        setTimeout(() => dispatch(setTyping(false)), 600);
       }
-      // If it IS a dynamic-message, keep typing indicator on
     } catch (error) {
-      // Stop typing on error
-      setTimeout(() => {
-        dispatch(setTyping(false));
-      }, 600);
+      setTimeout(() => dispatch(setTyping(false)), 600);
     }
   };
 
   const formatAnswerForDisplay = (answer: any, questionType: string): string => {
-    // For text inputs, return as-is
     if (questionType === 'text-input' || questionType === 'text-input-followup') {
       return answer || '';
     }
-    
-    // For boolean answers (yes/no questions)
     if (typeof answer === 'boolean') {
       return answer ? 'Yes' : 'No';
     }
-    
-    // For semantic differential questions
     if (questionType === 'semantic-differential' && typeof answer === 'object' && answer !== null) {
-      // Create visual representation with dots only
       const lines: string[] = [];
-      
-      // The answer object contains the values keyed by variable names
-      // We'll display them in the order they were stored
       Object.values(answer).forEach((value: any) => {
-        // The value should be 1-5
         const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
         lines.push(dots);
       });
-      
       return lines.join('\n');
     }
-    
-    // For questions with options, find the label
     if (currentQuestion?.options) {
-      // Handle array answers (multi-select)
       if (Array.isArray(answer)) {
-        const labels = answer.map(value => {
+        return answer.map(value => {
           const option = currentQuestion.options?.find(opt => opt.value === value);
           return option?.label || value;
-        });
-        return labels.join(', ');
+        }).join(', ');
       }
-      
-      // Handle single answer
       const option = currentQuestion.options.find(opt => opt.value === answer);
-      if (option) {
-        return option.label;
-      }
+      if (option) return option.label;
     }
-    
-    // Handle special object types
     if (typeof answer === 'object' && answer !== null) {
-      // Handle contact form responses
       if (answer.email) return answer.email;
       if (answer.phone) return answer.phone;
       if (answer.text) return answer.text;
       if (answer.videoUrl) return '🎥 Video response recorded';
-      // Handle VideoAsk responses
       if (answer.type === 'video') return '🎥 Video response recorded';
       if (answer.type === 'audio') return '🎤 Audio response recorded';
       if (answer.type === 'text') return '💬 Text response submitted';
       if (answer.type === 'skipped') return 'Skipped';
     }
-    
-    // Default: return as string
     return String(answer);
   };
+
+  // --- Render ---
 
   return (
     <Container>
       <ArtisticBackground />
       <ChatContainer ref={chatContainerRef}>
         <ChatContent>
-          {messages.map((message, index) => (
-            <ChatMessage key={`${message.id}-${index}`} message={message} />
-          ))}
+          {messages.map((message, index) => {
+            const isLastBotMessage = message.type === 'bot' && 
+                                     index === messages.length - 1;
+            return (
+              <ChatMessage 
+                key={`${message.id}-${index}`} 
+                ref={isLastBotMessage ? lastMessageRef : null}
+                message={message} 
+              />
+            );
+          })}
           
           {isTyping && <TypingIndicator />}
           
-          {/* Inline Question Area */}
           {(() => {
-            // Only render inline area for question types that produce UI
             const nonRenderableTypes = new Set([
-              'dynamic-message',
-              'final-message',
-              'videoask',
-              'video-autoplay',
-            ] as const);
+              'dynamic-message', 'final-message', 'videoask', 'video-autoplay'
+            ]);
 
-            const shouldRenderInline = !!currentQuestion && !isLoading && !isTyping && controlsVisible &&
+            const shouldRenderInline = !!currentQuestion && !isLoading && !isTyping &&
               !nonRenderableTypes.has(currentQuestion.type as any);
 
             if (!shouldRenderInline) return null;
 
             return (
-            <QuestionArea data-inline-controls="true">
-              {(currentQuestion.type === 'single-choice' ||
-                currentQuestion.type === 'multi-choice' ||
-                currentQuestion.type === 'quick-reply' ||
-                currentQuestion.type === 'message-button') ? (
-                <QuestionRenderer 
-                  key={currentQuestion.id}
-                  question={currentQuestion} 
-                  onAnswer={handleAnswer}
-                  disabled={isLoading}
-                />
-              ) : (
-                <QuestionWrapper>
+              <QuestionArea ref={questionAreaRef}>
+                {(currentQuestion.type === 'single-choice' ||
+                  currentQuestion.type === 'multi-choice' ||
+                  currentQuestion.type === 'quick-reply' ||
+                  currentQuestion.type === 'message-button') ? (
                   <QuestionRenderer 
                     key={currentQuestion.id}
                     question={currentQuestion} 
                     onAnswer={handleAnswer}
                     disabled={isLoading}
                   />
-                </QuestionWrapper>
-              )}
-            </QuestionArea>
+                ) : (
+                  <QuestionWrapper>
+                    <QuestionRenderer 
+                      key={currentQuestion.id}
+                      question={currentQuestion} 
+                      onAnswer={handleAnswer}
+                      disabled={isLoading}
+                    />
+                  </QuestionWrapper>
+                )}
+              </QuestionArea>
             );
           })()}
           
-          {/* Welcome State */}
           {!sessionId && !currentQuestion && (
             <WelcomeArea>
               <WelcomeCard>
@@ -402,18 +312,18 @@ const ChatInterface: React.FC = () => {
               </WelcomeCard>
             </WelcomeArea>
           )}
-          
-          <div ref={messagesEndRef} />
         </ChatContent>
-        {showScrollHint && (
-          <ScrollHint role="button" aria-label="Scroll down for more options" onClick={scrollToBottom}>
-            ↓
-          </ScrollHint>
-        )}
+        <ScrollHint $visible={showScrollHint}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M19 12l-7 7-7-7"/>
+          </svg>
+        </ScrollHint>
       </ChatContainer>
     </Container>
   );
 };
+
+// --- Styled Components ---
 
 const Container = styled.div`
   display: flex;
@@ -421,15 +331,12 @@ const Container = styled.div`
   flex: 1;
   overflow: hidden;
   position: relative;
-  background: ${({ theme }) => theme.colors.background}; // Now #FFF8F1
+  background: ${({ theme }) => theme.colors.background};
 `;
 
 const ArtisticBackground = styled.div`
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   opacity: 0.03;
   background-image: 
     radial-gradient(circle at 20% 80%, ${({ theme }) => theme.colors.accent.purple} 0%, transparent 50%),
@@ -444,48 +351,12 @@ const ChatContainer = styled.div`
   overflow-x: hidden;
   position: relative;
   
-  /* Enable scroll snap on desktop for nicer manual scrolling */
-  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    scroll-snap-type: y proximity;
-  }
-  
-  /* Custom scrollbar */
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
+  &::-webkit-scrollbar { width: 8px; }
+  &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb {
     background: ${({ theme }) => theme.colors.border};
     border-radius: ${({ theme }) => theme.borderRadius.full};
-    
-    &:hover {
-      background: ${({ theme }) => theme.colors.text.secondary};
-    }
-  }
-`;
-
-const ScrollHint = styled.button`
-  position: absolute;
-  left: 50%;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0));
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.55);
-  color: #fff;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  padding: 6px 10px;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  z-index: 50;
-  box-shadow: ${({ theme }) => theme.shadows.sm};
-
-  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    display: none;
+    &:hover { background: ${({ theme }) => theme.colors.text.secondary}; }
   }
 `;
 
@@ -493,8 +364,6 @@ const ChatContent = styled.div`
   max-width: 800px;
   margin: 0 auto;
   padding: ${({ theme }) => theme.spacing.xl};
-  padding-bottom: ${({ theme }) => theme.spacing['3xl']};
-  
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: ${({ theme }) => theme.spacing.lg};
   }
@@ -502,10 +371,8 @@ const ChatContent = styled.div`
 
 const QuestionArea = styled.div`
   margin-top: ${({ theme }) => theme.spacing.xl};
-  margin-left: 48px; // Align with bot messages
-  animation: ${fadeInUp} 0.5s ease-out;
-  animation-fill-mode: both;
-  
+  margin-left: 48px;
+  animation: ${fadeInUp} 0.5s ease-out both;
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     margin-left: 0;
   }
@@ -513,19 +380,17 @@ const QuestionArea = styled.div`
 
 const QuestionWrapper = styled.div`
   background: #D9F7FF;
-  border: none;
   border-radius: ${({ theme }) => theme.borderRadius.xl};
   padding: ${({ theme }) => theme.spacing.xl};
   position: relative;
-  margin-left: 48px; // Align with bot messages
+  margin-left: 48px;
   
   &::before {
     content: '';
     position: absolute;
     top: 20px;
     left: -8px;
-    width: 0;
-    height: 0;
+    width: 0; height: 0;
     border-style: solid;
     border-width: 10px 10px 10px 0;
     border-color: transparent #D9F7FF transparent transparent;
@@ -534,11 +399,7 @@ const QuestionWrapper = styled.div`
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     margin-left: 0;
     padding: ${({ theme }) => theme.spacing.lg};
-    
-    &::before,
-    &::after {
-      display: none;
-    }
+    &::before { display: none; }
   }
 `;
 
@@ -560,17 +421,12 @@ const WelcomeCard = styled.div`
   width: 100%;
   transform: translateY(0);
   transition: transform ${({ theme }) => theme.transitions.normal};
-  
-  &:hover {
-    transform: translateY(-4px);
-  }
+  &:hover { transform: translateY(-4px); }
 `;
 
 const WelcomePattern = styled.div`
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 120px;
   background: ${({ theme }) => theme.colors.gradients.artistic};
   opacity: 0.9;
@@ -578,9 +434,7 @@ const WelcomePattern = styled.div`
   &::after {
     content: '';
     position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
+    bottom: -1px; left: 0; right: 0;
     height: 40px;
     background: ${({ theme }) => theme.colors.surface};
     border-radius: 50% 50% 0 0 / 100% 100% 0 0;
@@ -592,7 +446,6 @@ const WelcomeContent = styled.div`
   padding: ${({ theme }) => theme.spacing['2xl']};
   text-align: center;
   z-index: 1;
-  
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: ${({ theme }) => theme.spacing.xl};
   }
@@ -631,24 +484,36 @@ const StartButton = styled.button`
     transform: translateY(-2px);
     box-shadow: ${({ theme }) => theme.shadows.xl};
   }
-  
-  &:active {
-    transform: translateY(0);
-  }
-`;
-
-const bounce = keyframes`
-  0%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-12px);
-  }
+  &:active { transform: translateY(0); }
 `;
 
 const ButtonIcon = styled.span`
   font-size: ${({ theme }) => theme.fontSizes['2xl']};
   animation: ${bounce} 2s infinite;
+`;
+
+const ScrollHint = styled.div<{$visible: boolean}>`
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 10;
+  pointer-events: none;
+  
+  opacity: 0;
+  animation: ${({ $visible }) => $visible ? css`${fadeIn} 0.3s forwards` : css`${fadeOut} 0.3s forwards`};
+  
+  svg {
+    animation: ${bounce} 1.5s infinite;
+  }
 `;
 
 export default ChatInterface;
