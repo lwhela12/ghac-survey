@@ -152,17 +152,20 @@ const surveySlice = createSlice({
         state.currentQuestion = action.payload.nextQuestion;
         state.progress = action.payload.progress;
         
-        // Add next question as bot message if it has non-empty content
+        // Add next question as bot message if it has non-empty content OR if it's a video type
         if (action.payload.nextQuestion) {
           // Create a deep copy of the question to avoid shared references
           try {
             const questionCopy = JSON.parse(JSON.stringify(action.payload.nextQuestion));
             const hasContent = typeof questionCopy.content === 'string' && questionCopy.content.trim().length > 0;
-            if (hasContent) {
+            const isVideoType = questionCopy.type === 'video-autoplay' || questionCopy.type === 'videoask';
+            
+            // Add message if it has content OR if it's a video type (which may have empty content)
+            if (hasContent || isVideoType) {
               state.messages.push({
                 id: `bot-${Date.now()}-${action.payload.nextQuestion.id}`,
                 type: 'bot',
-                content: questionCopy.content,
+                content: questionCopy.content || '', // Ensure content is at least empty string
                 question: questionCopy,
                 timestamp: new Date().toISOString(),
               });

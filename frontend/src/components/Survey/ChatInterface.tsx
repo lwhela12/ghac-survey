@@ -206,11 +206,13 @@ const ChatInterface: React.FC = () => {
           {messages.map((message) => {
             const isLastBotMessage = message.type === 'bot' && 
                                      message === messages[messages.length - 1];
+            const isCurrentQuestion = message.question?.id === currentQuestion?.id;
             return (
               <ChatMessage 
                 key={message.id}
                 ref={isLastBotMessage ? lastMessageRef : null}
-                message={message} 
+                message={message}
+                isCurrentQuestion={isCurrentQuestion}
               />
             );
           })}

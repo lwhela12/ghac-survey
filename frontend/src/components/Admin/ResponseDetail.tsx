@@ -116,7 +116,7 @@ const ResponseDetail: React.FC = () => {
         <InfoCard>
           <InfoLabel>Status</InfoLabel>
           <InfoValue>
-            <StatusBadge completed={!!response.completed_at}>
+            <StatusBadge $completed={!!response.completed_at}>
               {response.completed_at ? 'Completed' : 'In Progress'}
             </StatusBadge>
           </InfoValue>
@@ -291,12 +291,12 @@ const InfoValue = styled.div`
   font-family: 'Nunito', sans-serif;
 `;
 
-const StatusBadge = styled.span<{ completed: boolean }>`
+const StatusBadge = styled.span<{ $completed: boolean }>`
   display: inline-flex;
   align-items: center;
   padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
-  background: ${({ completed }) => completed ? '#22c55e20' : '#f59e0b20'};
-  color: ${({ completed }) => completed ? '#22c55e' : '#f59e0b'};
+  background: ${({ $completed }) => $completed ? '#22c55e20' : '#f59e0b20'};
+  color: ${({ $completed }) => $completed ? '#22c55e' : '#f59e0b'};
   border-radius: ${({ theme }) => theme.borderRadius.full};
   font-size: ${({ theme }) => theme.fontSizes.sm};
   font-weight: ${({ theme }) => theme.fontWeights.medium};

@@ -2,7 +2,7 @@
 import React, { useEffect, forwardRef, memo } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import amandaIcon from '../../assets/images/Amanda_icon.png';
-import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { useAppDispatch } from '../../hooks/redux';
 import { submitAnswer } from '../../store/slices/surveySlice';
 import VideoAskQuestion from './QuestionTypes/VideoAskQuestion';
 import QuestionRenderer from './QuestionRenderer';
@@ -15,11 +15,11 @@ interface ChatMessageProps {
     timestamp: string;
     question?: any; // Include the full question object
   };
+  isCurrentQuestion?: boolean;
 }
 
-const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, ref) => {
+const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message, isCurrentQuestion = false }, ref) => {
   const dispatch = useAppDispatch();
-  const currentQuestion = useAppSelector(state => state.survey.currentQuestion);
   const [videoCompleted] = React.useState(false);
 
   useEffect(() => {
@@ -126,7 +126,7 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
   };
 
   // Handle video-autoplay rendering
-  const isCurrentQuestion = currentQuestion?.id === message.question?.id;
+  // isCurrentQuestion is now passed as a prop from ChatInterface
 
   return (
     <Container ref={ref} type={message.type} data-question-id={message.question?.id || undefined}>

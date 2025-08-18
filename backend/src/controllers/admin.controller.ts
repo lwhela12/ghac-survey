@@ -218,7 +218,20 @@ class AdminController {
           r.started_at,
           r.completed_at,
           s.name as survey_name,
-          COUNT(DISTINCT a.id) as answer_count
+          COUNT(DISTINCT CASE 
+            WHEN a.metadata->>'blockId' NOT IN (
+              'b0', 'b0a', 'b1a', 'b1a-skip', 'b1b', 'b1c',
+              'b2-info', 'b2-info-1', 'b2-info-2', 'b2-info-goodbye',
+              'b3-response', 'b5-response', 'b5-thanks-gif', 'b5-thanks', 'b5-normal-response',
+              'b6-response', 'b7-thanks-gif', 'b7-response', 'b7-permission-yes', 'b7-permission-no',
+              'b9-response', 'b10-response', 'b12-response', 'b12-permission-yes', 'b12-permission-no',
+              'b15-learn-more', 'b16-contact-confirm', 'b16-contact-great', 'b16-contact-preface',
+              'b16-skip-contact', 'b16-contact-skip', 'b16-no-updates', 'b16-chat-again',
+              'b17-response', 'b18-no-share-transition', 'b18-congratulations',
+              'b19.5-celebration-gif', 'b19.5-celebration-gif-no-share', 'b20', 'b20-no-share'
+            ) THEN a.id 
+            ELSE NULL 
+          END) as answer_count
         FROM responses r
         JOIN surveys s ON r.survey_id = s.id
         LEFT JOIN answers a ON r.id = a.response_id
