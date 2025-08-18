@@ -49,17 +49,35 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message, isC
       return null;
     }
     
-    // Check if content contains a markdown image/gif
-    const gifMatch = message.content.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-    if (gifMatch) {
-      const altText = gifMatch[1];
-      const imageUrl = gifMatch[2];
-      
-      // Check if it's a GIF
-      if (imageUrl.includes('.gif') || imageUrl.includes('giphy')) {
+    // Check if content contains a markdown media (image/video)
+    const mediaMatch = message.content.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+    if (mediaMatch) {
+      const altText = mediaMatch[1];
+      const url = mediaMatch[2];
+
+      const isGif = /\.gif($|\?)/i.test(url) || /giphy\.com/.test(url);
+      const isImage = /\.(png|jpe?g|webp|svg)($|\?)/i.test(url) || isGif;
+      const isVideo = /\.(mp4|webm)($|\?)/i.test(url);
+
+      if (isVideo) {
         return (
           <GifContainer>
-            <GifImage src={imageUrl} alt={altText} />
+            <InlineVideo
+              src={url}
+              aria-label={altText}
+              playsInline
+              autoPlay
+              muted
+              loop
+              controls={false}
+            />
+          </GifContainer>
+        );
+      }
+      if (isImage) {
+        return (
+          <GifContainer>
+            <GifImage src={url} alt={altText} />
           </GifContainer>
         );
       }
@@ -368,6 +386,14 @@ const GifImage = styled.img`
   height: auto;
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   box-shadow: ${({ theme }) => theme.shadows.md};
+`;
+
+const InlineVideo = styled.video`
+  max-width: 100%;
+  height: auto;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  box-shadow: ${({ theme }) => theme.shadows.md};
+  background: #000;
 `;
 
 export default memo(ChatMessage);

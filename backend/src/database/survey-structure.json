@@ -417,7 +417,7 @@
     "b5-thanks-gif": {
       "id": "b5-thanks-gif",
       "type": "dynamic-message",
-      "content": "![Thank you!](https://media.giphy.com/media/QAsBwSjx9zVKoGp9nr/giphy.gif)",
+      "content": "![Thank you!](https://media1.giphy.com/media/QAsBwSjx9zVKoGp9nr/giphy.mp4)",
       "autoAdvance": true,
       "autoAdvanceDelay": 3000,
       "next": "b5-thanks"
