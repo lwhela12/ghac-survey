@@ -13,6 +13,7 @@ import {
 import ChatMessage from './ChatMessage';
 import QuestionRenderer from './QuestionRenderer';
 import TypingIndicator from './TypingIndicator';
+import WelcomeScreen from './WelcomeScreen';
 
 // --- Keyframes ---
 
@@ -256,19 +257,7 @@ const ChatInterface: React.FC = () => {
           })()}
           
           {!sessionId && !currentQuestion && (
-            <WelcomeArea>
-              <WelcomeCard>
-                <WelcomePattern />
-                <WelcomeContent>
-                  <WelcomeTitle>Let&apos;s talk about arts & culture</WelcomeTitle>
-                  <WelcomeSubtitle>Your voice shapes Hartford&apos;s creative future</WelcomeSubtitle>
-                  <StartButton onClick={() => dispatch(startSurvey(''))}>
-                    <ButtonIcon>🎨</ButtonIcon>
-                    Begin the Conversation
-                  </StartButton>
-                </WelcomeContent>
-              </WelcomeCard>
-            </WelcomeArea>
+            <WelcomeScreen onStart={() => dispatch(startSurvey(''))} />
           )}
           <BottomSentinel ref={bottomRef} />
         </ChatContent>
@@ -285,7 +274,7 @@ const Container = styled.div`
   flex: 1;
   overflow: hidden;
   position: relative;
-  background: ${({ theme }) => theme.colors.background};
+  background: linear-gradient(135deg, #FFF8F1 0%, #FFEEDE 100%);
 `;
 
 const ArtisticBackground = styled.div`
@@ -357,94 +346,7 @@ const QuestionWrapper = styled.div`
   }
 `;
 
-const WelcomeArea = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  animation: ${fadeIn} 0.6s ease-out;
-`;
-
-const WelcomeCard = styled.div`
-  position: relative;
-  background: ${({ theme }) => theme.colors.surface};
-  border-radius: ${({ theme }) => theme.borderRadius['2xl']};
-  box-shadow: ${({ theme }) => theme.shadows.artistic};
-  overflow: hidden;
-  max-width: 500px;
-  width: 100%;
-  transform: translateY(0);
-  transition: transform ${({ theme }) => theme.transitions.normal};
-  &:hover { transform: translateY(-4px); }
-`;
-
-const WelcomePattern = styled.div`
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 120px;
-  background: ${({ theme }) => theme.colors.gradients.artistic};
-  opacity: 0.9;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px; left: 0; right: 0;
-    height: 40px;
-    background: ${({ theme }) => theme.colors.surface};
-    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-  }
-`;
-
-const WelcomeContent = styled.div`
-  position: relative;
-  padding: ${({ theme }) => theme.spacing['2xl']};
-  text-align: center;
-  z-index: 1;
-  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    padding: ${({ theme }) => theme.spacing.xl};
-  }
-`;
-
-const WelcomeTitle = styled.h2`
-  font-size: ${({ theme }) => theme.fontSizes['2xl']};
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
-  color: ${({ theme }) => theme.colors.text.primary};
-  margin-bottom: ${({ theme }) => theme.spacing.sm};
-  font-family: ${({ theme }) => theme.fonts.display};
-`;
-
-const WelcomeSubtitle = styled.p`
-  font-size: ${({ theme }) => theme.fontSizes.lg};
-  color: ${({ theme }) => theme.colors.text.secondary};
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
-`;
-
-const StartButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.gradients.primary};
-  color: ${({ theme }) => theme.colors.text.inverse};
-  border: none;
-  padding: ${({ theme }) => theme.spacing.lg} ${({ theme }) => theme.spacing['2xl']};
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  font-size: ${({ theme }) => theme.fontSizes.lg};
-  font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.normal};
-  box-shadow: ${({ theme }) => theme.shadows.lg};
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: ${({ theme }) => theme.shadows.xl};
-  }
-  &:active { transform: translateY(0); }
-`;
-
-const ButtonIcon = styled.span`
-  font-size: ${({ theme }) => theme.fontSizes['2xl']};
-  animation: ${bounce} 2s infinite;
-`;
+// Removed old Welcome components - now using WelcomeScreen component
 
 const BottomSentinel = styled.div`
   height: 1px;

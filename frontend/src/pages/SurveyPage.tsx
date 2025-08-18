@@ -88,7 +88,7 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: ${({ theme }) => theme.colors.background};
+  background: linear-gradient(135deg, #FFF8F1 0%, #FFEEDE 100%);
 `;
 
 const Header = styled.header<{ $showLogo: boolean }>`
