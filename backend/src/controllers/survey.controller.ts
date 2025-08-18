@@ -54,48 +54,47 @@ class SurveyController {
         throw new AppError('Invalid session ID', 400);
       }
 
-      // Save answer
-      await surveyService.saveAnswer({
-        responseId: surveyState.responseId,
-        questionId,
-        answer
-      });
-
-      // Update state with answer
+      // FAST-PATH: Update in-memory state and compute next before DB
       await surveyEngine.updateState(sessionId, questionId, answer);
 
-      // Get updated state with new variables
       const updatedState = await surveyEngine.getState(sessionId);
       if (!updatedState) {
         throw new AppError('Failed to get updated state', 500);
       }
 
-      // Get next question based on branching logic
-      const nextQuestion = await surveyEngine.getNextQuestion(
-        sessionId,
-        questionId,
-        answer
-      );
-      
-      // Debug logging for VideoAsk questions
-      if (questionId === 'b7' || questionId === 'b12') {
-        logger.debug(`VideoAsk answer submitted: ${questionId} -> ${nextQuestion?.id}`);
-      }
+      const nextQuestion = await surveyEngine.getNextQuestion(sessionId, questionId, answer);
 
-      // Calculate progress
+      // Calculate progress from in-memory state
       const progress = await surveyEngine.calculateProgress(sessionId);
 
-      // Check if the next question is the final message (b20 or b20-no-share)
-      // If so, mark the survey as complete
-      if (nextQuestion && (nextQuestion.id === 'b20' || nextQuestion.id === 'b20-no-share')) {
-        await surveyService.completeResponse(surveyState.responseId);
-      }
-
+      // Respond immediately using in-memory computation
       res.json({
         nextQuestion: nextQuestion ? 
           surveyEngine.formatQuestionForClient(nextQuestion, updatedState.variables) : 
           null,
         progress
+      });
+
+      // Persist to DB asynchronously (fire-and-forget)
+      setImmediate(async () => {
+        try {
+          await surveyService.saveAnswer({
+            responseId: updatedState.responseId,
+            questionId,
+            answer
+          });
+
+          // If this was effectively the last step (final message next), mark complete
+          if (nextQuestion && (nextQuestion.id === 'b20' || nextQuestion.id === 'b20-no-share')) {
+            await surveyService.completeResponse(updatedState.responseId);
+          }
+        } catch (persistError) {
+          logger.error('Async persistence failed for answer', {
+            sessionId,
+            questionId,
+            error: persistError
+          });
+        }
       });
     } catch (error) {
       next(error);
