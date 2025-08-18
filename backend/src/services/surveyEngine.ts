@@ -170,6 +170,60 @@ class SurveyEngine {
       case 'b6': // Arts importance
         state.variables.arts_importance = answer;
         break;
+      case 'b16': // Contact methods selection (multi-select)
+        if (Array.isArray(answer)) {
+          state.variables.contact_methods = answer;
+          state.variables.wants_email = answer.includes('email');
+          state.variables.wants_text = answer.includes('text');
+          state.variables.wants_print = answer.includes('print') || answer.includes('newsletter');
+          state.variables.wants_social = answer.includes('social');
+          state.variables.wants_conversations = answer.includes('conversations');
+          state.variables.wants_no_updates = answer.includes('no-updates');
+          // Derived: any selection that requires contact details
+          state.variables.contact_info_needed = !!(
+            state.variables.wants_email ||
+            state.variables.wants_text ||
+            state.variables.wants_print
+          );
+          // Reset consent flags on change
+          state.variables.contact_info_confirmed = false;
+          state.variables.contact_info_skipped = false;
+        }
+        break;
+      case 'b16-contact-confirm':
+        // Quick confirm to gather contact details now or not
+        // Answer comes as 'yes' or 'no'
+        state.variables.contact_info_consent = answer;
+        state.variables.contact_info_confirmed = answer === 'yes';
+        state.variables.contact_info_skipped = answer === 'no';
+        break;
+      case 'b16a-contact':
+        if (typeof answer === 'object' && answer !== null) {
+          if (answer.firstName) state.variables.first_name = answer.firstName;
+          if (answer.lastName) state.variables.last_name = answer.lastName;
+          if (answer.address1) state.variables.contact_address1 = answer.address1;
+          if (answer.address2) state.variables.contact_address2 = answer.address2;
+          if (answer.city) state.variables.contact_city = answer.city;
+          if (answer.state) state.variables.contact_state = answer.state;
+          if (answer.zip) state.variables.contact_zip = answer.zip;
+          if (answer.email) state.variables.contact_email = answer.email;
+          if (answer.phone) state.variables.contact_phone = answer.phone;
+          if (answer.type === 'skipped') state.variables.contact_form_skipped = true;
+          state.variables.name_captured = !!(state.variables.first_name || state.variables.last_name);
+          state.variables.contact_form_completed = true;
+        } else {
+          state.variables.contact_form_completed = true;
+        }
+        break;
+      case 'b16-contact-skip':
+        state.variables.contact_form_skip_ack_shown = true;
+        break;
+      case 'b16a-social':
+        state.variables.social_shown = true;
+        break;
+      case 'b16-chat-again':
+        state.variables.chat_again_shown = true;
+        break;
       case 'b7': // VideoAsk personal story
         if (typeof answer === 'object' && answer !== null) {
           state.variables.personal_story_type = answer.type || 'skipped';
@@ -424,14 +478,22 @@ class SurveyEngine {
     // Add conditional blocks based on user's path
     let expectedBlocks = [...mainPath];
     
-    // If user answered b16 with email/newsletter/text, they see b16a variant
-    if (state.answers.b16) {
-      const b16Answer = state.answers.b16;
-      if (b16Answer === 'email') expectedBlocks.push('b16a-email');
-      else if (b16Answer === 'newsletter') expectedBlocks.push('b16a-newsletter');
-      else if (b16Answer === 'text') expectedBlocks.push('b16a-text');
-      else if (b16Answer === 'mix') expectedBlocks.push('b16a-mix');
+    // Contact confirmation and sub-forms
+    const contactNeeded = !!state.variables.contact_info_needed;
+    const contactConfirmed = state.variables.contact_info_confirmed === true;
+    const wantsSocial = state.variables.wants_social === true;
+    const wantsChat = state.variables.wants_conversations === true;
+    if (contactNeeded) {
+      expectedBlocks.push('b16-contact-confirm');
+      if (contactConfirmed) {
+        expectedBlocks.push('b16-contact-great');
+        expectedBlocks.push('b16-contact-preface');
+        expectedBlocks.push('b16a-contact');
+      }
     }
+    // Social/chat order: chat -> social
+    if ((!contactNeeded || contactConfirmed) && wantsChat) expectedBlocks.push('b16-chat-again');
+    if ((!contactNeeded || contactConfirmed) && wantsSocial) expectedBlocks.push('b16a-social');
     
     // If user consented to demographics, they see b19
     if (state.variables.demographics_consent === true) {

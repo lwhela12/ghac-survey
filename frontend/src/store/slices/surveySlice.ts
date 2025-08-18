@@ -115,18 +115,21 @@ const surveySlice = createSlice({
         state.isLoading = false;
         state.sessionId = action.payload.sessionId;
         state.currentQuestion = action.payload.firstQuestion;
-        // Always add the first question as a bot message
+        // Add the first question as a bot message only if it has content
         if (action.payload.firstQuestion) {
           try {
             // Create a deep copy to avoid shared references
             const questionCopy = JSON.parse(JSON.stringify(action.payload.firstQuestion));
-            state.messages.push({
-              id: `bot-${Date.now()}-${action.payload.firstQuestion.id}`,
-              type: 'bot',
-              content: questionCopy.content,
-              question: questionCopy,
-              timestamp: new Date().toISOString(),
-            });
+            const hasContent = typeof questionCopy.content === 'string' && questionCopy.content.trim().length > 0;
+            if (hasContent) {
+              state.messages.push({
+                id: `bot-${Date.now()}-${action.payload.firstQuestion.id}`,
+                type: 'bot',
+                content: questionCopy.content,
+                question: questionCopy,
+                timestamp: new Date().toISOString(),
+              });
+            }
           } catch (error) {
             console.error('Error parsing firstQuestion:', error);
             console.error('firstQuestion value:', action.payload.firstQuestion);
@@ -149,19 +152,21 @@ const surveySlice = createSlice({
         state.currentQuestion = action.payload.nextQuestion;
         state.progress = action.payload.progress;
         
-        // Add next question as bot message if there is one
+        // Add next question as bot message if it has non-empty content
         if (action.payload.nextQuestion) {
           // Create a deep copy of the question to avoid shared references
           try {
             const questionCopy = JSON.parse(JSON.stringify(action.payload.nextQuestion));
-            
-            state.messages.push({
-              id: `bot-${Date.now()}-${action.payload.nextQuestion.id}`,
-              type: 'bot',
-              content: questionCopy.content,
-              question: questionCopy,
-              timestamp: new Date().toISOString(),
-            });
+            const hasContent = typeof questionCopy.content === 'string' && questionCopy.content.trim().length > 0;
+            if (hasContent) {
+              state.messages.push({
+                id: `bot-${Date.now()}-${action.payload.nextQuestion.id}`,
+                type: 'bot',
+                content: questionCopy.content,
+                question: questionCopy,
+                timestamp: new Date().toISOString(),
+              });
+            }
           } catch (error) {
             console.error('Error parsing nextQuestion:', error);
             console.error('nextQuestion value:', action.payload.nextQuestion);
@@ -197,13 +202,16 @@ const surveySlice = createSlice({
             content: "Welcome back! Let's continue where you left off.",
             timestamp: new Date().toISOString(),
           });
-          state.messages.push({
-            id: `bot-${Date.now()}-${action.payload.currentQuestion.id}`,
-            type: 'bot',
-            content: questionCopy.content,
-            question: questionCopy,
-            timestamp: new Date().toISOString(),
-          });
+          const hasContent = typeof questionCopy.content === 'string' && questionCopy.content.trim().length > 0;
+          if (hasContent) {
+            state.messages.push({
+              id: `bot-${Date.now()}-${action.payload.currentQuestion.id}`,
+              type: 'bot',
+              content: questionCopy.content,
+              question: questionCopy,
+              timestamp: new Date().toISOString(),
+            });
+          }
         }
       })
       .addCase(resumeSurvey.rejected, (state, action) => {

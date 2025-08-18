@@ -83,6 +83,9 @@ class SurveyService {
 
       if (typeof data.answer === 'string') {
         answerText = data.answer;
+      } else if (typeof data.answer === 'boolean') {
+        // Convert boolean to Yes/No text for yes-no questions like b18
+        answerText = data.answer ? 'Yes' : 'No';
       } else if (Array.isArray(data.answer)) {
         answerChoiceIds = data.answer;
       } else if (typeof data.answer === 'object') {

@@ -214,7 +214,7 @@ class AdminController {
         SELECT 
           r.id,
           r.survey_id,
-          r.respondent_name,
+          COALESCE(name_answer.answer_text, r.respondent_name) as respondent_name,
           r.started_at,
           r.completed_at,
           s.name as survey_name,
@@ -222,6 +222,8 @@ class AdminController {
         FROM responses r
         JOIN surveys s ON r.survey_id = s.id
         LEFT JOIN answers a ON r.id = a.response_id
+        LEFT JOIN answers name_answer ON r.id = name_answer.response_id 
+          AND name_answer.metadata->>'blockId' = 'b3'
         WHERE 1=1
       `;
 
@@ -240,7 +242,7 @@ class AdminController {
       }
 
       query += `
-        GROUP BY r.id, s.name
+        GROUP BY r.id, s.name, name_answer.answer_text
         ORDER BY r.started_at DESC
         LIMIT $${++paramCount} OFFSET $${++paramCount}
       `;
@@ -367,10 +369,18 @@ class AdminController {
       // Get response details
       const responseQuery = `
         SELECT 
-          r.*,
+          r.id,
+          r.survey_id,
+          r.session_id,
+          COALESCE(name_answer.answer_text, r.respondent_name) as respondent_name,
+          r.started_at,
+          r.completed_at,
+          r.metadata,
           s.name as survey_name
         FROM responses r
         JOIN surveys s ON r.survey_id = s.id
+        LEFT JOIN answers name_answer ON r.id = name_answer.response_id 
+          AND name_answer.metadata->>'blockId' = 'b3'
         WHERE r.id = $1
       `;
 
@@ -418,18 +428,15 @@ class AdminController {
       return res.status(400).send('surveyId is required');
     }
 
-    const client = await db.connect().catch(err => {
-      logger.error('Failed to connect to database client', err);
-      next(err);
-    });
-
-    if (!client) return;
-
     try {
-      const query = new QueryStream(`
+      const surveyStructure = require('../database/survey-structure.json');
+      const questionOrder = surveyStructure.survey.sections.flatMap(s => s.blocks);
+      const questionTextMap = new Map(Object.entries(surveyStructure.blocks).map(([id, block]) => [id, block.content || id]));
+
+      const query = `
         SELECT 
           r.id as response_id,
-          r.respondent_name,
+          COALESCE(name_answer.answer_text, r.respondent_name) as respondent_name,
           r.started_at,
           r.completed_at,
           a.metadata->>'blockId' as question_id,
@@ -439,37 +446,30 @@ class AdminController {
           a.metadata
         FROM responses r
         LEFT JOIN answers a ON r.id = a.response_id
+        LEFT JOIN answers name_answer ON r.id = name_answer.response_id 
+          AND name_answer.metadata->>'blockId' = 'b3'
         WHERE r.survey_id = $1
         ORDER BY r.started_at, a.answered_at
-      `, [surveyId]);
+      `;
 
-      const queryStream = client.query(query);
-      const csvStream = format({ headers: true });
+      const { rows } = await db.query(query, [surveyId]);
 
-      const transformer = new Transform({
-        objectMode: true,
-        transform(row, _encoding, callback) {
-          // This simplified transform creates one CSV row per answer.
-          // The original implementation tried to pivot data, which is complex and slow.
-          // This format is much more performant and standard for data analysis.
-          const flatRow = {
-            response_id: row.response_id,
-            respondent_name: row.respondent_name,
-            question_id: row.question_id,
-            answer: this._formatAnswer(row),
-            started_at: row.started_at ? new Date(row.started_at).toISOString() : '',
-            completed_at: row.completed_at ? new Date(row.completed_at).toISOString() : '',
-          };
-          callback(null, flatRow);
-        },
-        _formatAnswer(row) {
-          if (row.video_url) return row.video_url;
-          if (row.answer_choice_ids && row.answer_choice_ids.length > 0) return row.answer_choice_ids.join('; ');
-          if (row.metadata && row.question_id === 'b9') {
+      if (rows.length === 0) {
+        return res.status(404).send('No responses found for this survey.');
+      }
+
+      const formatAnswer = (row) => {
+        if (!row) return '';
+        if (row.video_url) return row.video_url;
+        if (row.answer_choice_ids && Array.isArray(row.answer_choice_ids) && row.answer_choice_ids.length > 0) {
+          return row.answer_choice_ids.join('; ');
+        }
+        if (row.metadata && typeof row.metadata === 'object') {
+          if (row.question_id === 'b9') {
             const scales = ['traditional_innovative', 'corporate_community', 'transactional_relationship', 'behind_visible', 'exclusive_inclusive'];
             return scales.map(scale => `${scale.replace(/_/g, '-')}: ${row.metadata[scale] || 'N/A'}`).join('; ');
           }
-          if (row.metadata && row.question_id === 'b19') {
+          if (row.question_id === 'b19') {
             const demo = row.metadata;
             const parts = [];
             if (demo.user_age) parts.push(`Age: ${demo.user_age}`);
@@ -479,31 +479,59 @@ class AdminController {
             if (demo.gender_identity) parts.push(`Gender: ${demo.gender_identity}`);
             return parts.join('; ');
           }
-          return row.answer_text || '';
         }
+        return row.answer_text || '';
+      };
+
+      const responses = new Map();
+      const allQuestionIds = new Set();
+
+      for (const row of rows) {
+        if (row.question_id) {
+          allQuestionIds.add(row.question_id);
+        }
+
+        if (!responses.has(row.response_id)) {
+          responses.set(row.response_id, {
+            response_id: row.response_id,
+            respondent_name: row.respondent_name,
+            started_at: row.started_at ? new Date(row.started_at).toISOString() : '',
+            completed_at: row.completed_at ? new Date(row.completed_at).toISOString() : '',
+          });
+        }
+        
+        const response = responses.get(row.response_id);
+        if (row.question_id) {
+          response[row.question_id] = formatAnswer(row);
+        }
+      }
+
+      const sortedQuestionIds = questionOrder.filter(id => allQuestionIds.has(id));
+      const headers = ['response_id', 'respondent_name', 'started_at', 'completed_at', ...sortedQuestionIds.map(id => questionTextMap.get(id) || id)];
+      
+      const data = Array.from(responses.values()).map(response => {
+        const row = {
+          response_id: response.response_id,
+          respondent_name: response.respondent_name,
+          started_at: response.started_at,
+          completed_at: response.completed_at,
+        };
+        for (const qid of sortedQuestionIds) {
+          row[questionTextMap.get(qid) || qid] = response[qid] || '';
+        }
+        return row;
       });
 
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="survey-export-${surveyId}-${Date.now()}.csv"`);
-
-      queryStream.pipe(transformer).pipe(csvStream).pipe(res);
-
-      queryStream.on('error', (err) => {
-        logger.error('Error streaming from database', { error: err });
-        client.release();
-        if (!res.headersSent) {
-          res.status(500).send('Error streaming data');
-        }
-      });
-
-      queryStream.on('end', () => {
-        logger.info('Database stream finished successfully.');
-        client.release();
-      });
+      
+      const csvStream = format({ headers });
+      csvStream.pipe(res);
+      data.forEach(row => csvStream.write(row));
+      csvStream.end();
 
     } catch (error) {
-      logger.error('Error setting up CSV export stream', { error });
-      client.release();
+      logger.error('Error exporting responses', { error });
       next(error);
     }
   }
@@ -640,6 +668,14 @@ class AdminController {
       const result = await db.query(summaryQuery, [surveyId]);
       
       const data = result.rows[0];
+      if (!data) {
+        return res.json({
+          totalResponses: 0,
+          completedResponses: 0,
+          avgCompletionTime: 0
+        });
+      }
+
       res.json({
         totalResponses: parseInt(data.total_responses) || 0,
         completedResponses: parseInt(data.completed_responses) || 0,

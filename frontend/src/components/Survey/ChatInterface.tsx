@@ -185,6 +185,7 @@ const ChatInterface: React.FC = () => {
     if (typeof answer === 'object' && answer !== null) {
       if (answer.email) return answer.email;
       if (answer.phone) return answer.phone;
+      if (answer.address1) return answer.address1;
       if (answer.text) return answer.text;
       if (answer.videoUrl) return '🎥 Video response recorded';
       if (answer.type === 'video') return '🎥 Video response recorded';

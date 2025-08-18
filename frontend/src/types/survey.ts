@@ -53,6 +53,7 @@ export interface Option {
   action?: string;
   url?: string;
   showText?: boolean;
+  exclusive?: boolean; // if true, mutually exclusive with others
 }
 
 export interface SemanticScale {

@@ -37,7 +37,21 @@
       {
         "id": "commitment-next-steps",
         "name": "Commitment & Next Steps",
-        "blocks": ["b15", "b15-learn-more", "b16", "b16-no-updates", "b16a-email", "b16a-text", "b16a-newsletter", "b16a-mix", "b16a-social"]
+        "blocks": [
+          "b15",
+          "b15-learn-more",
+          "b16",
+          "b16-contact-confirm",
+          "b16-contact-great",
+          "b16-contact-preface",
+          "b16-skip-contact",
+          "b16-contact-skip",
+          "b16-router",
+          "b16-no-updates",
+          "b16a-contact",
+          "b16-chat-again",
+          "b16a-social"
+        ]
       },
       {
         "id": "closing-demographics",
@@ -1086,53 +1100,130 @@
     },
     "b16": {
       "id": "b16",
-      "type": "single-choice",
-      "content": "If we were to share updates about our impact and opportunities, how would you prefer to hear from us?",
-      "variable": "communication_pref",
+      "type": "multi-choice",
+      "content": "If we were to share updates about our impact and opportunities, how would you prefer to hear from us? (Check all that apply).",
+      "variable": "contact_methods",
       "options": [
-        {
-          "id": "email",
-          "label": "Email updates with stories and impact",
-          "value": "email",
-          "next": "b16a-email"
-        },
-        {
-          "id": "text",
-          "label": "Text messages about events and opportunities",
-          "value": "text",
-          "next": "b16a-text"
-        },
-        {
-          "id": "conversations",
-          "label": "Future conversations like this one",
-          "value": "conversations",
-          "next": "b17"
-        },
-        {
-          "id": "newsletter",
-          "label": "Printed newsletter (quarterly)",
-          "value": "newsletter",
-          "next": "b16a-newsletter"
-        },
-        {
-          "id": "social",
-          "label": "Social media updates",
-          "value": "social",
-          "next": "b16a-social"
-        },
-        {
-          "id": "mix",
-          "label": "A mix of these",
-          "value": "mix",
-          "next": "b16a-mix"
-        },
-        {
-          "id": "no-updates",
-          "label": "I'd prefer not to receive updates",
-          "value": "no-updates",
-          "next": "b16-no-updates"
-        }
+        { "id": "email", "label": "Email updates", "value": "email" },
+        { "id": "text", "label": "Texts about events", "value": "text" },
+        { "id": "print", "label": "Print newsletter", "value": "print" },
+        { "id": "social", "label": "Follow on social media", "value": "social" },
+        { "id": "conversations", "label": "Chat like this again", "value": "conversations" },
+        { "id": "no-updates", "label": "No updates, thanks", "value": "no-updates", "exclusive": true }
+      ],
+      "next": "b16-router"
+    },
+    "b16-contact-confirm": {
+      "id": "b16-contact-confirm",
+      "type": "quick-reply",
+      "content": "I'm so glad you want to stay connected! If you'd like I can gather your contact information now to make sure we can stay in touch. What do you think?",
+      "variable": "contact_info_consent",
+      "options": [
+        { "id": "do-it", "label": "Let's do it!", "value": "yes", "next": "b16-contact-great" },
+        { "id": "not-now", "label": "Not right now.", "value": "no", "next": "b16-skip-contact" }
       ]
+    },
+    "b16-contact-great": {
+      "id": "b16-contact-great",
+      "type": "dynamic-message",
+      "content": "Amazing! I am so glad we are going to stay connected!",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 800,
+      "next": "b16-router"
+    },
+    "b16-contact-preface": {
+      "id": "b16-contact-preface",
+      "type": "dynamic-message",
+      "content": "Feel free to share any or all ways to stay in touch.",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 800,
+      "next": "b16a-contact"
+    },
+    "b16-contact-skip": {
+      "id": "b16-contact-skip",
+      "type": "dynamic-message",
+      "content": "No worries!",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 800,
+      "next": "b16-router"
+    },
+    "b16-skip-contact": {
+      "id": "b16-skip-contact",
+      "type": "dynamic-message",
+      "content": "No worries!",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 1200,
+      "next": "b17"
+    },
+    "b16-router": {
+      "id": "b16-router",
+      "type": "routing",
+      "content": "",
+      "conditionalNext": {
+        "if": { "variable": "wants_no_updates", "equals": true },
+        "then": "b16-no-updates",
+        "else": {
+          "if": { "and": [
+            { "variable": "contact_info_needed", "equals": true },
+            { "not": { "variable": "contact_info_confirmed", "equals": true } },
+            { "not": { "variable": "contact_info_skipped", "equals": true } }
+          ]},
+          "then": "b16-contact-confirm",
+          "else": {
+            "if": { "and": [
+              { "variable": "contact_form_skipped", "equals": true },
+              { "not": { "variable": "contact_form_skip_ack_shown", "equals": true } }
+            ]},
+            "then": "b16-contact-skip",
+            "else": {
+              "if": { "and": [
+                { "variable": "wants_conversations", "equals": true },
+                { "not": { "variable": "wants_social", "equals": true } },
+                { "not": { "variable": "contact_info_needed", "equals": true } },
+                { "not": { "variable": "chat_again_shown", "equals": true } }
+              ]},
+              "then": "b16-chat-again",
+              "else": {
+                "if": { "and": [
+                  { "variable": "contact_info_needed", "equals": true },
+                  { "variable": "contact_info_confirmed", "equals": true },
+                  { "not": { "variable": "contact_form_completed", "equals": true } }
+                ]},
+                "then": "b16-contact-preface",
+                "else": {
+                  "if": { "and": [
+                    { "variable": "wants_social", "equals": true },
+                    { "or": [
+                      { "not": { "variable": "contact_info_needed", "equals": true } },
+                      { "variable": "contact_info_confirmed", "equals": true }
+                    ]},
+                    { "not": { "variable": "social_shown", "equals": true } }
+                  ]},
+                  "then": "b16a-social",
+                  "else": "b17"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "b16a-contact": {
+      "id": "b16a-contact",
+      "type": "contact-form",
+      "content": "",
+      "fields": [
+        { "id": "firstName", "label": "First Name", "type": "text", "variable": "first_name", "required": false, "prefill": "user_name" },
+        { "id": "lastName", "label": "Last Name", "type": "text", "variable": "last_name", "required": false },
+        { "id": "address1", "label": "Address Line 1", "type": "text", "variable": "contact_address1", "required": false },
+        { "id": "address2", "label": "Address Line 2", "type": "text", "variable": "contact_address2", "required": false },
+        { "id": "city", "label": "City", "type": "text", "variable": "contact_city", "required": false },
+        { "id": "state", "label": "State", "type": "text", "variable": "contact_state", "required": false },
+        { "id": "zip", "label": "ZIP Code", "type": "text", "variable": "contact_zip", "required": false },
+        { "id": "phone", "label": "Phone", "type": "tel", "variable": "contact_phone", "required": false },
+        { "id": "email", "label": "Email", "type": "email", "variable": "contact_email", "required": false }
+      ],
+      "next": "b16-router"
     },
     "b16-no-updates": {
       "id": "b16-no-updates",
@@ -1142,161 +1233,29 @@
       "autoAdvanceDelay": 1500,
       "next": "b17"
     },
-    "b16a-email": {
-      "id": "b16a-email",
-      "type": "contact-form",
-      "content": "Great! Let me get your email address so we can stay connected.",
-      "fields": [
-        {
-          "id": "firstname",
-          "label": "First Name",
-          "type": "text",
-          "variable": "user_firstname",
-          "required": true,
-          "prefill": "user_name"
-        },
-        {
-          "id": "lastname",
-          "label": "Last Name",
-          "type": "text",
-          "variable": "user_lastname",
-          "required": true
-        },
-        {
-          "id": "email",
-          "label": "Email",
-          "type": "email",
-          "variable": "user_email",
-          "required": true
-        },
-        {
-          "id": "mobile",
-          "label": "Mobile (optional)",
-          "type": "tel",
-          "variable": "user_mobile",
-          "required": false
-        }
-      ],
-      "next": "b17"
-    },
-    "b16a-text": {
-      "id": "b16a-text",
-      "type": "contact-form",
-      "content": "Perfect! I'll need your mobile number for text updates.",
-      "fields": [
-        {
-          "id": "firstname",
-          "label": "First Name",
-          "type": "text",
-          "variable": "user_firstname",
-          "required": true,
-          "prefill": "user_name"
-        },
-        {
-          "id": "lastname",
-          "label": "Last Name",
-          "type": "text",
-          "variable": "user_lastname",
-          "required": true
-        },
-        {
-          "id": "mobile",
-          "label": "Mobile",
-          "type": "tel",
-          "variable": "user_mobile",
-          "required": true
-        },
-        {
-          "id": "email",
-          "label": "Email",
-          "type": "email",
-          "variable": "user_email",
-          "required": true
-        }
-      ],
-      "next": "b17"
-    },
-    "b16a-newsletter": {
-      "id": "b16a-newsletter",
-      "type": "contact-form",
-      "content": "Wonderful! I'll need your mailing address for the printed newsletter.",
-      "fields": [
-        {
-          "id": "firstname",
-          "label": "First Name",
-          "type": "text",
-          "variable": "user_firstname",
-          "required": true,
-          "prefill": "user_name"
-        },
-        {
-          "id": "lastname",
-          "label": "Last Name",
-          "type": "text",
-          "variable": "user_lastname",
-          "required": true
-        },
-        {
-          "id": "email",
-          "label": "Email",
-          "type": "email",
-          "variable": "user_email",
-          "required": true
-        },
-        {
-          "id": "address",
-          "label": "Full Mailing Address",
-          "type": "textarea",
-          "variable": "user_address",
-          "required": true
-        }
-      ],
-      "next": "b17"
-    },
-    "b16a-mix": {
-      "id": "b16a-mix",
-      "type": "contact-form",
-      "content": "A mix sounds great! Let me get your contact information.",
-      "fields": [
-        {
-          "id": "firstname",
-          "label": "First Name",
-          "type": "text",
-          "variable": "user_firstname",
-          "required": true,
-          "prefill": "user_name"
-        },
-        {
-          "id": "lastname",
-          "label": "Last Name",
-          "type": "text",
-          "variable": "user_lastname",
-          "required": true
-        },
-        {
-          "id": "email",
-          "label": "Email",
-          "type": "email",
-          "variable": "user_email",
-          "required": true
-        },
-        {
-          "id": "mobile",
-          "label": "Mobile (optional)",
-          "type": "tel",
-          "variable": "user_mobile",
-          "required": false
-        }
-      ],
-      "next": "b17"
+    "b16-chat-again": {
+      "id": "b16-chat-again",
+      "type": "dynamic-message",
+      "content": "Great! We will work on putting more of these together!",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 1500,
+      "next": "b16-router"
     },
     "b16a-social": {
       "id": "b16a-social",
       "type": "dynamic-message",
-      "content": "Great! Follow us on social media for updates.\n\nFind us on [Facebook](https://www.facebook.com/greaterhartfordarts/), [Instagram](https://www.instagram.com/letsgoarts/), [X](https://x.com/LetsGoArts_org), and [LinkedIn](https://www.linkedin.com/company/greater-hartford-arts-council/).\n\nThank you for connecting with us!",
+      "contentCondition": {
+        "if": { "variable": "contact_form_completed", "equals": true },
+        "then": "also",
+        "else": "great"
+      },
+      "content": {
+        "great": "Great! Follow us on social media for updates.\n\nFind us on [Facebook](https://www.facebook.com/greaterhartfordarts/), [Instagram](https://www.instagram.com/letsgoarts/), [X](https://x.com/LetsGoArts_org), and [LinkedIn](https://www.linkedin.com/company/greater-hartford-arts-council/).\n\nThank you for connecting with us!",
+        "also": "Also! Follow us on social media for updates.\n\nFind us on [Facebook](https://www.facebook.com/greaterhartfordarts/), [Instagram](https://www.instagram.com/letsgoarts/), [X](https://x.com/LetsGoArts_org), and [LinkedIn](https://www.linkedin.com/company/greater-hartford-arts-council/).\n\nThank you for connecting with us!"
+      },
       "autoAdvance": true,
       "autoAdvanceDelay": 5000,
-      "next": "b17"
+      "next": "b16-router"
     },
     "b17": {
       "id": "b17",

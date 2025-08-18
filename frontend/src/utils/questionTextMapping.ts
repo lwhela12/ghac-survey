@@ -47,14 +47,22 @@ export const questionTextMap: Record<string, string> = {
   
   // Contact preferences and closing
   'b16': 'How would you prefer to hear from us about opportunities?',
-  'b16a-email': 'Email address',
-  'b16a-text': 'Mobile number for text updates',
-  'b16a-print': 'Mailing address for printed newsletter',
-  'b16a-multi': 'Contact information for multiple channels',
+  'b16-contact-confirm': 'Confirm sharing contact information',
+  'b16-contact-great': 'Contact info confirmation success',
+  'b16-contact-preface': 'Feel free to share any or all ways to stay in touch.',
+  'b16-contact-skip': 'No worries! (contact info skipped)',
+  'b16a-contact': 'Contact information (name, address, phone, email)',
+  'b16a-social': 'Follow us on social media',
+  'b16-chat-again': 'We will work on putting more of these together!',
   'b17': 'How valuable was this conversation for you?',
   'b18': 'Would you be willing to share a bit more about yourself? (Demographics)',
-  'b19': 'Demographics questions (ZIP, age, giving level, race/ethnicity, gender)',
-  'b19.2': 'May we reach out if we have opportunities that match your interests?',
+  'b19': 'Which age range best describes you?',
+  'b19.2': 'What best describes your gender identity?',
+  'b19.2-self-describe': 'Please describe your gender',
+  'b19.3': 'How would you describe your racial or ethnic background?',
+  'b19.3-self-describe': 'Please describe your race and ethnicity',
+  'b19.4': 'What\'s been your typical annual support level?',
+  'b19.5': 'What\'s your ZIP code?',
   'b20': 'Thank you for sharing! Want to explore what GHAC is up to right now?'
 };
 
@@ -83,8 +91,24 @@ export const formatComplexAnswer = (answer: any): string => {
     const metadata = answer.metadata;
     const blockId = metadata.blockId;
     
-    // Check for demographic data (b18, b19)
-    if (blockId === 'b18' || blockId === 'b19') {
+    // b18 is just Yes/No for demographics consent
+    if (blockId === 'b18') {
+      // The answer_text should contain Yes or No
+      return answer.answer_text || 'No answer provided';
+    }
+    
+    // Each demographic question saves its own answer
+    if (blockId === 'b19' || blockId === 'b19.2' || blockId === 'b19.3' || 
+        blockId === 'b19.4' || blockId === 'b19.5') {
+      // These should have their answers in answer_text or answer_choice_ids
+      if (answer.answer_choice_ids && answer.answer_choice_ids.length > 0) {
+        return answer.answer_choice_ids.join(', ');
+      }
+      return answer.answer_text || 'No answer provided';
+    }
+    
+    // Legacy check for old format (if any)
+    if (blockId === 'b19-old-format') {
       const demographicFields: string[] = [];
       
       // Handle each demographic field

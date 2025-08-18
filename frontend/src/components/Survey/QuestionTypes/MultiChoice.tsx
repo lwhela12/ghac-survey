@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { Question } from '../../../types/survey';
 
@@ -11,6 +11,26 @@ interface MultiChoiceProps {
 const MultiChoice: React.FC<MultiChoiceProps> = ({ question, onAnswer, disabled }) => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const exclusiveValues = useMemo(() => (question.options || [])
+    .filter(o => (o as any).exclusive || o.value === 'no-updates')
+    .map(o => o.value), [question.options]);
+
+  const hasExclusiveSelected = useMemo(() => Array.from(selected).some(v => exclusiveValues.includes(v)), [selected, exclusiveValues]);
+  const hasNonExclusiveSelected = useMemo(() => Array.from(selected).some(v => !exclusiveValues.includes(v)), [selected, exclusiveValues]);
+
+  const isOptionDisabled = (optionValue: string): boolean => {
+    if (disabled) return true;
+    const isExclusive = exclusiveValues.includes(optionValue);
+    const isSelected = selected.has(optionValue);
+    // If an exclusive is selected, disable all non-exclusive options (unless it's the selected one)
+    if (hasExclusiveSelected && !isExclusive && !isSelected) return true;
+    // If any non-exclusive is selected, disable exclusive options (unless it's the selected one)
+    if (hasNonExclusiveSelected && isExclusive && !isSelected) return true;
+    // Enforce maxSelections
+    if (question.maxSelections && selected.size >= question.maxSelections && !isSelected) return true;
+    return false;
+  };
+
   const handleToggle = (value: string) => {
     const newSelected = new Set(selected);
     if (newSelected.has(value)) {
@@ -19,15 +39,29 @@ const MultiChoice: React.FC<MultiChoiceProps> = ({ question, onAnswer, disabled 
       if (question.maxSelections && newSelected.size >= question.maxSelections) {
         return; // Don't add if max selections reached
       }
-      newSelected.add(value);
+      const isExclusive = exclusiveValues.includes(value);
+      if (isExclusive) {
+        // Selecting an exclusive clears others
+        newSelected.clear();
+        newSelected.add(value);
+      } else {
+        // Selecting non-exclusive clears any exclusive selection
+        for (const v of Array.from(newSelected)) {
+          if (exclusiveValues.includes(v)) newSelected.delete(v);
+        }
+        newSelected.add(value);
+      }
     }
     setSelected(newSelected);
   };
 
   const handleSubmit = () => {
-    if (selected.size > 0) {
-      onAnswer(Array.from(selected));
-    }
+    if (selected.size === 0) return;
+    // Enforce exclusivity for "no-updates" if present
+    const values = Array.from(selected);
+    const hasNoUpdates = values.includes('no-updates');
+    const filtered = hasNoUpdates ? ['no-updates'] : values.filter(v => v !== 'no-updates');
+    onAnswer(filtered);
   };
 
   return (
@@ -38,7 +72,7 @@ const MultiChoice: React.FC<MultiChoiceProps> = ({ question, onAnswer, disabled 
             key={option.id}
             onClick={() => handleToggle(option.value)}
             $isSelected={selected.has(option.value)}
-            disabled={disabled}
+            disabled={isOptionDisabled(option.value)}
           >
             <Checkbox $isSelected={selected.has(option.value)} />
             <OptionLabel>{option.label}</OptionLabel>

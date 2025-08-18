@@ -85,9 +85,9 @@ class SurveyController {
       // Calculate progress
       const progress = await surveyEngine.calculateProgress(sessionId);
 
-      // Check if the next question is the final message (b20)
+      // Check if the next question is the final message (b20 or b20-no-share)
       // If so, mark the survey as complete
-      if (nextQuestion && nextQuestion.id === 'b20') {
+      if (nextQuestion && (nextQuestion.id === 'b20' || nextQuestion.id === 'b20-no-share')) {
         await surveyService.completeResponse(surveyState.responseId);
       }
 
