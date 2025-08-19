@@ -1,5 +1,5 @@
 // frontend/src/components/Survey/ChatInterface.tsx
-import React, { useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import React, { useEffect, useRef, useLayoutEffect, useCallback, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
@@ -14,6 +14,19 @@ import ChatMessage from './ChatMessage';
 import QuestionRenderer from './QuestionRenderer';
 import TypingIndicator from './TypingIndicator';
 import WelcomeScreen from './WelcomeScreen';
+import {
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
 // --- Keyframes ---
 
@@ -33,6 +46,17 @@ const fadeInUp = keyframes`
 
 // --- Component ---
 
+// Create a context for drag state
+export const DragStateContext = React.createContext<{
+  activeId: string | null;
+  setActiveDragItem: (item: any) => void;
+  setDragHandlers: (handlers: { onDragEnd: (event: DragEndEvent) => void }) => void;
+}>({
+  activeId: null,
+  setActiveDragItem: () => {},
+  setDragHandlers: () => {},
+});
+
 const ChatInterface: React.FC = () => {
   const dispatch = useAppDispatch();
   const { messages, currentQuestion, isTyping, isLoading, sessionId } = useAppSelector(
@@ -45,32 +69,67 @@ const ChatInterface: React.FC = () => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const questionAreaRef = useRef<HTMLDivElement>(null);
 
+  // --- Drag and Drop State ---
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<any>(null);
+  const [dragHandlers, setDragHandlers] = useState<{ onDragEnd?: (event: DragEndEvent) => void }>({});
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    if (dragHandlers.onDragEnd) {
+      dragHandlers.onDragEnd(event);
+    }
+    setActiveId(null);
+    setActiveDragItem(null);
+  };
+
 
   useLayoutEffect(() => {
     const container = chatContainerRef.current;
     const bottom = bottomRef.current;
     if (!container || !bottom) return;
 
-    // Double RAF to ensure the DOM has fully painted new content before scrolling
+    // Triple RAF to ensure complete rendering before scrolling
     const raf1 = requestAnimationFrame(() => {
       const raf2 = requestAnimationFrame(() => {
-        const qa = questionAreaRef.current;
-        if (qa) {
-          const qaHeight = qa.offsetHeight;
-          const containerHeight = container.clientHeight;
-          if (qaHeight <= containerHeight) {
-            qa.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            return;
-          }
-        }
-        bottom.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        const raf3 = requestAnimationFrame(() => {
+          // Simply scroll to the absolute bottom every time
+          // This guarantees buttons are always visible
+          container.scrollTop = container.scrollHeight;
+        });
+        (bottom as any)._raf3 = raf3;
       });
       (bottom as any)._raf2 = raf2;
     });
     return () => {
       cancelAnimationFrame(raf1);
-      const nested = (bottom as any)._raf2;
-      if (nested) cancelAnimationFrame(nested);
+      const nested2 = (bottom as any)._raf2;
+      const nested3 = (bottom as any)._raf3;
+      if (nested2) cancelAnimationFrame(nested2);
+      if (nested3) cancelAnimationFrame(nested3);
     };
   }, [messages.length, isTyping, currentQuestion?.id]);
 
@@ -157,10 +216,22 @@ const ChatInterface: React.FC = () => {
     }
     if (questionType === 'semantic-differential' && typeof answer === 'object' && answer !== null) {
       const lines: string[] = [];
-      Object.values(answer).forEach((value: any) => {
-        const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
-        lines.push(dots);
-      });
+      // Use the original scales order to ensure correct display order
+      if (currentQuestion?.scales) {
+        currentQuestion.scales.forEach((scale: any) => {
+          const value = answer[scale.variable];
+          if (value) {
+            const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
+            lines.push(dots);
+          }
+        });
+      } else {
+        // Fallback to original behavior if scales not available
+        Object.values(answer).forEach((value: any) => {
+          const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
+          lines.push(dots);
+        });
+      }
       return lines.join('\n');
     }
     if (currentQuestion?.options) {
@@ -190,10 +261,17 @@ const ChatInterface: React.FC = () => {
   // --- Render ---
 
   return (
-    <Container>
-      <ArtisticBackground />
-      <ChatContainer ref={chatContainerRef}>
-        <ChatContent>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <DragStateContext.Provider value={{ activeId, setActiveDragItem, setDragHandlers }}>
+        <Container>
+          <ArtisticBackground />
+          <ChatContainer ref={chatContainerRef}>
+            <ChatContent>
           {messages.map((message) => {
             const isLastBotMessage = message.type === 'bot' && 
                                      message === messages[messages.length - 1];
@@ -253,6 +331,16 @@ const ChatInterface: React.FC = () => {
         </ChatContent>
       </ChatContainer>
     </Container>
+    </DragStateContext.Provider>
+    <DragOverlay
+      dropAnimation={{
+        duration: 300,
+        easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+      }}
+    >
+      {activeDragItem}
+    </DragOverlay>
+    </DndContext>
   );
 };
 

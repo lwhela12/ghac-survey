@@ -1,6 +1,15 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { DragEndEvent } from '@dnd-kit/core';
 import { Question } from '../../../types/survey';
+import { DragStateContext } from '../ChatInterface';
 
 interface RankingProps {
   question: Question;
@@ -8,101 +17,86 @@ interface RankingProps {
   disabled?: boolean;
 }
 
+interface SortableItemProps {
+  id: string;
+  label: string;
+  index: number;
+  isTopChoice: boolean;
+}
+
+const SortableItem: React.FC<SortableItemProps> = ({ id, label, index, isTopChoice }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+    active,
+  } = useSortable({ id });
+
+  const isActive = active?.id === id;
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const { activeId, setActiveDragItem } = useContext(DragStateContext);
+
+  useEffect(() => {
+    if (isDragging && activeId === id) {
+      setActiveDragItem(
+        <DragOverlayContent $isTopChoice={isTopChoice}>
+          <DragHandle aria-hidden>≡</DragHandle>
+          <Number $isTopChoice={isTopChoice}>{index + 1}</Number>
+          <Label>{label}</Label>
+        </DragOverlayContent>
+      );
+    }
+  }, [isDragging, activeId, id, isTopChoice, index, label, setActiveDragItem]);
+
+  return (
+    <OptionItem
+      ref={setNodeRef}
+      style={style}
+      $isDragging={isDragging}
+      $isActive={isActive}
+      $isTopChoice={isTopChoice}
+      {...attributes}
+      {...listeners}
+    >
+      <DragHandle aria-hidden>≡</DragHandle>
+      <Number $isTopChoice={isTopChoice}>{index + 1}</Number>
+      <Label>{label}</Label>
+    </OptionItem>
+  );
+};
+
 const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
   const [items, setItems] = useState(question.options || []);
   const maxSelections = question.maxSelections || 3;
+  const { setDragHandlers } = useContext(DragStateContext);
 
-  // Mobile tap-to-swap state
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const setItemRef = (id: string) => (el: HTMLDivElement | null) => {
-    itemRefs.current[id] = el;
-  };
-  const pendingSwap = useRef<{ a: string; b: string; oldPos: Record<string, number> } | null>(null);
-
-  // Run simple FLIP animation for swapped items on mobile
-  useLayoutEffect(() => {
-    if (!pendingSwap.current) return;
-    const { a, b, oldPos } = pendingSwap.current;
-    const ids = [a, b];
-    const newPos: Record<string, number> = {};
-    try {
-      // Measure new positions
-      ids.forEach((id) => {
-        const el = itemRefs.current[id];
-        if (el) newPos[id] = el.getBoundingClientRect().top;
-      });
-
-      // Apply FLIP for each swapped element
-      ids.forEach((id) => {
-        const el = itemRefs.current[id];
-        if (!el) return;
-        const dy = (oldPos[id] ?? 0) - (newPos[id] ?? 0);
-        if (typeof dy !== 'number' || !isFinite(dy) || Math.abs(dy) < 1) return;
-
-        el.style.transition = 'none';
-        el.style.transform = `translateY(${dy}px)`;
-        requestAnimationFrame(() => {
-          el.style.transition = 'transform 180ms ease-out';
-          el.style.transform = 'translateY(0)';
-          const cleanup = () => {
-            el.style.transition = '';
-            el.style.transform = '';
-            el.removeEventListener('transitionend', cleanup);
-          };
-          // Fallback cleanup in case transitionend doesn't fire
-          const timeout = window.setTimeout(cleanup, 220);
-          const wrappedCleanup = () => {
-            window.clearTimeout(timeout);
-            cleanup();
-          };
-          el.addEventListener('transitionend', wrappedCleanup);
+  // Register drag end handler
+  useEffect(() => {
+    const handleDragEnd = (event: DragEndEvent) => {
+      const { active, over } = event;
+      
+      if (over && active.id !== over.id) {
+        setItems((prevItems) => {
+          const oldIndex = prevItems.findIndex((item) => item.id === active.id);
+          const newIndex = prevItems.findIndex((item) => item.id === over.id);
+          if (oldIndex !== -1 && newIndex !== -1) {
+            return arrayMove(prevItems, oldIndex, newIndex);
+          }
+          return prevItems;
         });
-      });
-    } catch (e) {
-      // Swallow any animation errors to avoid crashing the app
-      // eslint-disable-next-line no-console
-      console.warn('Ranking FLIP animation skipped:', e);
-    } finally {
-      pendingSwap.current = null;
-      // Ensure selection highlight is cleared as soon as animation completes
-      setSelectedId(null);
-    }
-  }, [items]);
+      }
+    };
 
-  const handleItemClick = (id: string) => {
-    if (disabled) return;
-    if (!selectedId) {
-      setSelectedId(id);
-      return;
-    }
-    if (selectedId === id) {
-      setSelectedId(null);
-      return;
-    }
-    // Swap selectedId with id
-    const from = items.findIndex((it) => it.id === selectedId);
-    const to = items.findIndex((it) => it.id === id);
-    if (from === -1 || to === -1) {
-      setSelectedId(null);
-      return;
-    }
-    // Record old positions for FLIP
-    const oldPos: Record<string, number> = {};
-    [selectedId, id].forEach((key) => {
-      const el = itemRefs.current[key];
-      if (el) oldPos[key] = el.getBoundingClientRect().top;
-    });
-    setItems((prev) => {
-      const next = prev.slice();
-      const tmp = next[from];
-      next[from] = next[to];
-      next[to] = tmp;
-      return next;
-    });
-    pendingSwap.current = { a: selectedId, b: id, oldPos };
-    setSelectedId(null);
-  };
+    setDragHandlers({ onDragEnd: handleDragEnd });
+  }, [setDragHandlers]);
 
   const handleSubmit = () => {
     const topItems = items.slice(0, maxSelections).map((opt) => opt.value);
@@ -111,35 +105,24 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
 
   return (
     <Container>
-      {/* Bubble copy handles the main instruction; keeping inline area focused on the cards */}
-      <Instructions />
-      <OptionsContainer>
-        {items.map((option, index) => (
-          <OptionItem
-            key={option.id}
-            ref={setItemRef(option.id)}
-            $isDragging={false}
-            $isDragOver={false}
-            $isTopChoice={index < maxSelections}
-            $isSelected={selectedId === option.id}
-            data-index={index}
-            onClick={() => handleItemClick(option.id)}
-            role="button"
-            aria-pressed={selectedId === option.id}
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleItemClick(option.id);
-              }
-            }}
-          >
-            <DragHandle aria-hidden>↕︎</DragHandle>
-            <Number $isTopChoice={index < maxSelections}>{index + 1}</Number>
-            <Label>{option.label}</Label>
-          </OptionItem>
-        ))}
-      </OptionsContainer>
+      <Instructions>Drag and drop to reorder</Instructions>
+      
+      <SortableContext
+        items={items.map(item => item.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <OptionsContainer>
+          {items.map((option, index) => (
+            <SortableItem
+              key={option.id}
+              id={option.id}
+              label={option.label}
+              index={index}
+              isTopChoice={index < maxSelections}
+            />
+          ))}
+        </OptionsContainer>
+      </SortableContext>
 
       <SubmitSection>
         <Hint>Your top {maxSelections} selections will be submitted</Hint>
@@ -151,6 +134,7 @@ const Ranking: React.FC<RankingProps> = ({ question, onAnswer, disabled }) => {
   );
 };
 
+// Styled Components
 const Container = styled.div`
   display: flex;
   flex-direction: column;
@@ -158,9 +142,14 @@ const Container = styled.div`
 `;
 
 const Instructions = styled.p`
-  font-size: ${({ theme }) => theme.fontSizes.base};
-  color: ${({ theme }) => theme.colors.text.primary};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  color: ${({ theme }) => theme.colors.text.secondary};
   margin: 0;
+  text-align: center;
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    font-size: ${({ theme }) => theme.fontSizes.xs};
+  }
 `;
 
 const OptionsContainer = styled.div`
@@ -170,38 +159,110 @@ const OptionsContainer = styled.div`
 `;
 
 const OptionItem = styled.div<{ 
-  $isDragging: boolean; 
-  $isDragOver: boolean;
+  $isDragging?: boolean;
+  $isActive?: boolean;
   $isTopChoice: boolean;
-  $isSelected?: boolean;
 }>`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.md};
   padding: ${({ theme }) => theme.spacing.md};
-  /* Top 3 always blue-tinted; when selected, grey it out */
-  background-color: ${({ theme, $isTopChoice, $isSelected }) =>
-    $isSelected
-      ? theme.colors.border /* grey for selected state */
-      : ($isTopChoice ? theme.colors.primary + '10' : theme.colors.surface)};
-  border: 2px solid ${({ theme, $isDragOver, $isTopChoice }) =>
-    $isDragOver ? theme.colors.primary : $isTopChoice ? theme.colors.primary + '50' : theme.colors.border};
+  background-color: ${({ theme, $isTopChoice }) =>
+    $isTopChoice ? theme.colors.primary + '10' : theme.colors.surface};
+  border: 2px solid ${({ theme, $isTopChoice }) =>
+    $isTopChoice ? theme.colors.primary + '50' : theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.fast};
-  opacity: ${({ $isDragging }) => ($isDragging ? 0.5 : 1)};
-  transform: ${({ $isDragOver }) => ($isDragOver ? 'scale(1.02)' : 'scale(1)')};
+  cursor: grab;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  touch-action: manipulation;
-  box-shadow: ${({ $isSelected }) => ($isSelected ? '0 0 0 3px rgba(0,85,165,0.25)' : 'none')};
+  touch-action: none;
+  opacity: ${({ $isDragging }) => ($isDragging ? 0.3 : 1)};
+  transition: all 0.2s ease;
+  transform-origin: center center;
   
-  @media (hover: hover) {
-    &:hover {
-      background-color: ${({ theme, $isSelected }) =>
-        $isSelected ? theme.colors.borderLight : 'inherit'};
-      border-color: ${({ theme }) => theme.colors.primary}50;
+  /* Float effect when active (grabbed but not yet dragging) */
+  ${({ $isActive, $isDragging }) => $isActive && !$isDragging && `
+    transform: scale(1.05) rotate(2deg);
+    box-shadow: 
+      0 20px 40px rgba(0,0,0,0.15),
+      0 15px 25px rgba(0,0,0,0.1),
+      0 0 40px rgba(0,85,165,0.1);
+    animation: float 2s ease-in-out infinite;
+    z-index: 1000;
+    
+    @keyframes float {
+      0%, 100% {
+        transform: scale(1.05) rotate(2deg) translateY(0px);
+      }
+      50% {
+        transform: scale(1.05) rotate(2deg) translateY(-5px);
+      }
+    }
+  `}
+  
+  &:active {
+    cursor: grabbing;
+  }
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.sm};
+    
+    ${({ $isActive, $isDragging }) => $isActive && !$isDragging && `
+      transform: scale(1.03) rotate(1deg);
+      
+      @keyframes float {
+        0%, 100% {
+          transform: scale(1.03) rotate(1deg) translateY(0px);
+        }
+        50% {
+          transform: scale(1.03) rotate(1deg) translateY(-3px);
+        }
+      }
+    `}
+  }
+`;
+
+const DragOverlayContent = styled.div<{ 
+  $isTopChoice: boolean;
+}>`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.md};
+  padding: ${({ theme }) => theme.spacing.md};
+  background-color: ${({ theme }) => theme.colors.surface};
+  border: 2px solid ${({ theme, $isTopChoice }) =>
+    $isTopChoice ? theme.colors.primary + '50' : theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  box-shadow: 
+    0 20px 40px rgba(0,0,0,0.15),
+    0 15px 25px rgba(0,0,0,0.1),
+    0 0 40px rgba(0,85,165,0.1);
+  cursor: grabbing;
+  min-width: 300px;
+  transform: scale(1.05) rotate(2deg);
+  animation: float 2s ease-in-out infinite;
+  
+  @keyframes float {
+    0%, 100% {
+      transform: scale(1.05) rotate(2deg) translateY(0px);
+    }
+    50% {
+      transform: scale(1.05) rotate(2deg) translateY(-5px);
+    }
+  }
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    min-width: 250px;
+    transform: scale(1.03) rotate(1deg);
+    
+    @keyframes float {
+      0%, 100% {
+        transform: scale(1.03) rotate(1deg) translateY(0px);
+      }
+      50% {
+        transform: scale(1.03) rotate(1deg) translateY(-3px);
+      }
     }
   }
 `;
@@ -209,10 +270,11 @@ const OptionItem = styled.div<{
 const DragHandle = styled.span`
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: ${({ theme }) => theme.fontSizes.lg};
-  cursor: grab;
+  width: 24px;
+  text-align: center;
   
-  &:active {
-    cursor: grabbing;
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    font-size: ${({ theme }) => theme.fontSizes.xl};
   }
 `;
 
@@ -228,12 +290,18 @@ const Number = styled.span<{ $isTopChoice: boolean }>`
     $isTopChoice ? theme.colors.text.inverse : theme.colors.text.primary};
   border-radius: 50%;
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  transition: all ${({ theme }) => theme.transitions.fast};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  flex-shrink: 0;
 `;
 
 const Label = styled.span`
   flex: 1;
   font-size: ${({ theme }) => theme.fontSizes.base};
+  line-height: 1.4;
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    font-size: ${({ theme }) => theme.fontSizes.sm};
+  }
 `;
 
 const SubmitSection = styled.div`
@@ -241,6 +309,7 @@ const SubmitSection = styled.div`
   flex-direction: column;
   gap: ${({ theme }) => theme.spacing.sm};
   align-items: flex-start;
+  margin-top: ${({ theme }) => theme.spacing.md};
 `;
 
 const Hint = styled.p`
@@ -268,6 +337,10 @@ const SubmitButton = styled.button`
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+  
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
   }
 `;
 

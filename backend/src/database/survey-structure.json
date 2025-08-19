@@ -994,7 +994,7 @@
     "b14": {
       "id": "b14",
       "type": "ranking",
-      "content": "As we look ahead, what would you **most like to see** strengthened in Greater Hartford's arts ecosystem? (To rank, click any two cards to swap their order)",
+      "content": "As we look ahead, what would you **most like to see** strengthened in Greater Hartford's arts ecosystem? (To rank, drag and drop the cards below into your preferred order)",
       "variable": "top_priorities",
       "maxSelections": 3,
       "options": [
