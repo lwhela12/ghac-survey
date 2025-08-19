@@ -115,8 +115,9 @@ const OptionCard = styled.button<{
   border-radius: ${({ theme }) => theme.borderRadius.full};
   cursor: pointer;
   text-align: left;
-  transition: all ${({ theme }) => theme.transitions.normal};
+  transition: transform ${({ theme }) => theme.transitions.normal}, background-color ${({ theme }) => theme.transitions.normal}, border-color ${({ theme }) => theme.transitions.normal};
   animation: ${fadeInUp} 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${({ $delay }) => $delay}s both;
+  will-change: transform;
   position: relative;
   overflow: hidden;
   

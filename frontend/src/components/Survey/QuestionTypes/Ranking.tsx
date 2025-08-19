@@ -178,8 +178,9 @@ const OptionItem = styled.div<{
   -webkit-touch-callout: none;
   touch-action: none;
   opacity: ${({ $isDragging }) => ($isDragging ? 0.3 : 1)};
-  transition: all 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   transform-origin: center center;
+  will-change: transform, opacity;
   
   /* Float effect when active (grabbed but not yet dragging) */
   ${({ $isActive, $isDragging }) => $isActive && !$isDragging && `
@@ -242,6 +243,7 @@ const DragOverlayContent = styled.div<{
   min-width: 300px;
   transform: scale(1.05) rotate(2deg);
   animation: float 2s ease-in-out infinite;
+  will-change: transform;
   
   @keyframes float {
     0%, 100% {

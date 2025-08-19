@@ -1,5 +1,5 @@
 // frontend/src/components/Survey/ChatInterface.tsx
-import React, { useEffect, useRef, useLayoutEffect, useCallback, useState } from 'react';
+import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
@@ -109,28 +109,18 @@ const ChatInterface: React.FC = () => {
 
   useLayoutEffect(() => {
     const container = chatContainerRef.current;
-    const bottom = bottomRef.current;
-    if (!container || !bottom) return;
+    if (!container) return;
 
-    // Triple RAF to ensure complete rendering before scrolling
-    const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => {
-        const raf3 = requestAnimationFrame(() => {
-          // Simply scroll to the absolute bottom every time
-          // This guarantees buttons are always visible
-          container.scrollTop = container.scrollHeight;
-        });
-        (bottom as any)._raf3 = raf3;
+    // Single RAF for smoother animation
+    const raf = requestAnimationFrame(() => {
+      // Smooth scroll to bottom
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
       });
-      (bottom as any)._raf2 = raf2;
     });
-    return () => {
-      cancelAnimationFrame(raf1);
-      const nested2 = (bottom as any)._raf2;
-      const nested3 = (bottom as any)._raf3;
-      if (nested2) cancelAnimationFrame(nested2);
-      if (nested3) cancelAnimationFrame(nested3);
-    };
+    
+    return () => cancelAnimationFrame(raf);
   }, [messages.length, isTyping, currentQuestion?.id]);
 
 
@@ -156,7 +146,59 @@ const ChatInterface: React.FC = () => {
     }
   }, [currentQuestion, isLoading]);
 
+  // Format answers for display in the chat transcript
+  function formatAnswerForDisplay(answer: any, questionType: string): string {
+    if (questionType === 'text-input' || questionType === 'text-input-followup') {
+      return answer || '';
+    }
+    if (typeof answer === 'boolean') {
+      return answer ? 'Yes' : 'No';
+    }
+    if (questionType === 'semantic-differential' && typeof answer === 'object' && answer !== null) {
+      const lines: string[] = [];
+      // Use the original scales order to ensure correct display order
+      if (currentQuestion?.scales) {
+        currentQuestion.scales.forEach((scale: any) => {
+          const value = (answer as any)[scale.variable];
+          if (value) {
+            const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
+            lines.push(dots);
+          }
+        });
+      } else {
+        // Fallback to original behavior if scales not available
+        Object.values(answer).forEach((value: any) => {
+          const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
+          lines.push(dots);
+        });
+      }
+      return lines.join('\n');
+    }
+    if (currentQuestion?.options) {
+      if (Array.isArray(answer)) {
+        return (answer as any[]).map(value => {
+          const option = currentQuestion.options?.find(opt => opt.value === value);
+          return option?.label || (value as any);
+        }).join(', ');
+      }
+      const option = currentQuestion.options.find(opt => opt.value === answer);
+      if (option) return option.label;
+    }
+    if (typeof answer === 'object' && answer !== null) {
+      if ((answer as any).email) return (answer as any).email;
+      if ((answer as any).phone) return (answer as any).phone;
+      if ((answer as any).address1) return (answer as any).address1;
+      if ((answer as any).text) return (answer as any).text;
+      if ((answer as any).videoUrl) return '🎥 Video response recorded';
+      if ((answer as any).type === 'video') return '🎥 Video response recorded';
+      if ((answer as any).type === 'audio') return '🎤 Audio response recorded';
+      if ((answer as any).type === 'text') return '💬 Text response submitted';
+      if ((answer as any).type === 'skipped') return 'Skipped';
+    }
+    return String(answer);
+  }
 
+  
   // --- Answer Handling ---
 
   const handleAnswer = async (answer: any) => {
@@ -207,56 +249,7 @@ const ChatInterface: React.FC = () => {
     }
   };
 
-  const formatAnswerForDisplay = useCallback((answer: any, questionType: string): string => {
-    if (questionType === 'text-input' || questionType === 'text-input-followup') {
-      return answer || '';
-    }
-    if (typeof answer === 'boolean') {
-      return answer ? 'Yes' : 'No';
-    }
-    if (questionType === 'semantic-differential' && typeof answer === 'object' && answer !== null) {
-      const lines: string[] = [];
-      // Use the original scales order to ensure correct display order
-      if (currentQuestion?.scales) {
-        currentQuestion.scales.forEach((scale: any) => {
-          const value = answer[scale.variable];
-          if (value) {
-            const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
-            lines.push(dots);
-          }
-        });
-      } else {
-        // Fallback to original behavior if scales not available
-        Object.values(answer).forEach((value: any) => {
-          const dots = Array(5).fill('○').map((dot, i) => i + 1 === value ? '●' : dot).join(' ');
-          lines.push(dots);
-        });
-      }
-      return lines.join('\n');
-    }
-    if (currentQuestion?.options) {
-      if (Array.isArray(answer)) {
-        return answer.map(value => {
-          const option = currentQuestion.options?.find(opt => opt.value === value);
-          return option?.label || value;
-        }).join(', ');
-      }
-      const option = currentQuestion.options.find(opt => opt.value === answer);
-      if (option) return option.label;
-    }
-    if (typeof answer === 'object' && answer !== null) {
-      if (answer.email) return answer.email;
-      if (answer.phone) return answer.phone;
-      if (answer.address1) return answer.address1;
-      if (answer.text) return answer.text;
-      if (answer.videoUrl) return '🎥 Video response recorded';
-      if (answer.type === 'video') return '🎥 Video response recorded';
-      if (answer.type === 'audio') return '🎤 Audio response recorded';
-      if (answer.type === 'text') return '💬 Text response submitted';
-      if (answer.type === 'skipped') return 'Skipped';
-    }
-    return String(answer);
-  }, [currentQuestion]);
+  // removed useCallback version of formatAnswerForDisplay; using function above for stability
 
   // --- Render ---
 

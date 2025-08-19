@@ -117,7 +117,7 @@ const StartButton = styled.button`
   border: none;
   padding: 24px 60px;
   cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.normal};
+  transition: transform ${({ theme }) => theme.transitions.normal}, box-shadow ${({ theme }) => theme.transitions.normal}, background ${({ theme }) => theme.transitions.normal};
   margin-top: ${({ theme }) => theme.spacing.lg};
   
   &:hover {

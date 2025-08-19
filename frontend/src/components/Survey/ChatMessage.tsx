@@ -160,7 +160,6 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message, isC
                   question={message.question} 
                   onAnswer={(answer) => {
                     if (isCurrentQuestion) {
-                      // Only submit if it's the current question
                       dispatch(submitAnswer({
                         questionId: message.question.id,
                         answer
