@@ -150,7 +150,12 @@ const surveySlice = createSlice({
       .addCase(submitAnswer.fulfilled, (state, action) => {
         state.isLoading = false;
         state.currentQuestion = action.payload.nextQuestion;
-        state.progress = action.payload.progress;
+        // Set progress to 100% if we've reached a final-message
+        if (action.payload.nextQuestion?.type === 'final-message') {
+          state.progress = 100;
+        } else {
+          state.progress = action.payload.progress;
+        }
         
         // Add next question as bot message if it has non-empty content OR if it's a video type
         if (action.payload.nextQuestion) {

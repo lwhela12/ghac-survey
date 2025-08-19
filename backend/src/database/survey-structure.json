@@ -32,7 +32,7 @@
       {
         "id": "vision-identity",
         "name": "Vision & Identity",
-        "blocks": ["b12", "b12-response", "b12-permission", "b12-permission-yes", "b12-permission-no", "b13", "b13-other", "b14"]
+        "blocks": ["b12", "b12-skip-message", "b12-response", "b12-permission", "b12-permission-yes", "b12-permission-no", "b13", "b13-other", "b14"]
       },
       {
         "id": "commitment-next-steps",
@@ -870,9 +870,17 @@
       "variable": "future_vision",
       "conditionalNext": {
         "if": { "variable": "future_vision_type", "equals": "skipped" },
-        "then": "b13",
+        "then": "b12-skip-message",
         "else": "b12-permission"
       }
+    },
+    "b12-skip-message": {
+      "id": "b12-skip-message",
+      "type": "dynamic-message",
+      "content": "Keeping it moving! 🏎️",
+      "autoAdvance": true,
+      "autoAdvanceDelay": 1500,
+      "next": "b13"
     },
     "b12-response": {
       "id": "b12-response",

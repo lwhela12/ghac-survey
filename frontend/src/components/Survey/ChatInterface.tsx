@@ -232,11 +232,11 @@ const ChatInterface: React.FC = () => {
       })).unwrap();
       
       if (!result.nextQuestion || result.nextQuestion.type !== 'dynamic-message') {
-        // Add 3s delay for single-choice and multi-choice questions
-        const delayForQuestionTypes = ['single-choice', 'multi-choice'];
-        const typingDuration = result.nextQuestion && delayForQuestionTypes.includes(result.nextQuestion.type) 
-          ? 3000 
-          : 600;
+        // Add 3s delay for single-choice, multi-choice, semantic-differential, and ranking questions
+        const delayForQuestionTypes = ['single-choice', 'multi-choice', 'semantic-differential', 'ranking'];
+        // Also apply delay when coming FROM a dynamic-message TO these question types
+        const shouldApplyDelay = result.nextQuestion && delayForQuestionTypes.includes(result.nextQuestion.type);
+        const typingDuration = shouldApplyDelay ? 3000 : 600;
         setTimeout(() => dispatch(setTyping(false)), typingDuration);
       }
     } catch (error) {
