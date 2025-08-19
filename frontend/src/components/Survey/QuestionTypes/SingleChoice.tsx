@@ -23,28 +23,26 @@ const fadeInUp = keyframes`
 
 const SingleChoice: React.FC<SingleChoiceProps> = ({ question, onAnswer, disabled }) => {
   const [selected, setSelected] = useState<string | null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
 
   const handleSelect = (option: any) => {
+    if (disabled) return;
     setSelected(option.value);
-    setIsAnimating(true);
-    
-    // Check if this option has a special action
+
+    // Actions that should still execute immediately
     if (option.action === 'link' && option.url) {
-      // Open the link in a new tab
       window.open(option.url, '_blank');
-      // Don't submit an answer for link actions
       return;
-    } else if (option.action === 'close') {
-      // Submit the close action
-      setTimeout(() => {
-        onAnswer('close');
-      }, 300);
-    } else {
-      // Normal answer submission
-      setTimeout(() => {
-        onAnswer(option.value);
-      }, 300);
+    }
+    if (option.action === 'close') {
+      onAnswer('close');
+      return;
+    }
+    // For normal options, wait for user to confirm
+  };
+
+  const handleConfirm = () => {
+    if (selected && !disabled) {
+      onAnswer(selected);
     }
   };
 
@@ -56,8 +54,8 @@ const SingleChoice: React.FC<SingleChoiceProps> = ({ question, onAnswer, disable
             key={option.id}
             onClick={() => handleSelect(option)}
             $isSelected={selected === option.value}
-            $isAnimating={isAnimating && selected === option.value}
-            disabled={disabled || isAnimating}
+            $isAnimating={false}
+            disabled={disabled}
             $delay={index * 0.05}
           >
             <OptionContent>
@@ -72,6 +70,18 @@ const SingleChoice: React.FC<SingleChoiceProps> = ({ question, onAnswer, disable
           </OptionCard>
         ))}
       </OptionsGrid>
+
+      <ConfirmRow>
+        <ConfirmHint>
+          {selected ? 'Click confirm to continue' : 'Select one option'}
+        </ConfirmHint>
+        <ConfirmButton 
+          onClick={handleConfirm} 
+          disabled={!selected || !!disabled}
+        >
+          Confirm →
+        </ConfirmButton>
+      </ConfirmRow>
     </Container>
   );
 };
@@ -209,6 +219,39 @@ const OptionDescription = styled.span`
   margin-top: ${({ theme }) => theme.spacing.xs};
   line-height: 1.4;
   font-family: 'Nunito', sans-serif;
+`;
+
+const ConfirmRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: ${({ theme }) => theme.spacing.md};
+`;
+
+const ConfirmHint = styled.span`
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+`;
+
+const ConfirmButton = styled.button`
+  background: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.text.inverse};
+  border: none;
+  border-radius: ${({ theme }) => theme.borderRadius.full};
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
+  font-size: ${({ theme }) => theme.fontSizes.base};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.fast};
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 export default SingleChoice;

@@ -131,7 +131,12 @@ const ChatInterface: React.FC = () => {
       })).unwrap();
       
       if (!result.nextQuestion || result.nextQuestion.type !== 'dynamic-message') {
-        setTimeout(() => dispatch(setTyping(false)), 600);
+        // Add 3s delay for single-choice and multi-choice questions
+        const delayForQuestionTypes = ['single-choice', 'multi-choice'];
+        const typingDuration = result.nextQuestion && delayForQuestionTypes.includes(result.nextQuestion.type) 
+          ? 3000 
+          : 600;
+        setTimeout(() => dispatch(setTyping(false)), typingDuration);
       }
     } catch (error) {
       console.error('Error submitting answer:', error);
