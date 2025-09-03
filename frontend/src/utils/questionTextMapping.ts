@@ -21,6 +21,7 @@ export const questionTextMap: Record<string, string> = {
   
   // Connection and engagement
   'b4': 'Connection to Greater Hartford Arts Council',
+  'b4-past-engagement': 'Welcome back! When was the last time you engaged or donated to the Greater Hartford Arts Council?',
   'b4a': 'Thank you message based on connection type',
   'b4a-other': 'Other connection details',
   'b5': 'How do you currently connect with the arts in our region?',
@@ -173,6 +174,7 @@ export const getQuestionType = (questionId: string, answer: any): string => {
     'b3': 'text-input',
     'b3-empty-message': 'dynamic-message',
     'b4': 'single-choice',
+    'b4-past-engagement': 'single-choice',
     'b4a': 'dynamic-message',
     'b5': 'multi-choice',
     'b6': 'scale',

@@ -12,7 +12,7 @@
       {
         "id": "connection-context",
         "name": "Connection & Context",
-        "blocks": ["b4", "b4a", "b5", "b5-response", "b5-other-only", "b5-thanks-gif", "b5-thanks", "b5-normal-response", "b5-other-multi"]
+        "blocks": ["b4", "b4-past-engagement", "b4a", "b5", "b5-response", "b5-other-only", "b5-thanks-gif", "b5-thanks", "b5-normal-response", "b5-other-multi"]
       },
       {
         "id": "values-beliefs",
@@ -261,7 +261,7 @@
           "id": "past-supporter",
           "label": "I've supported GHAC in the past",
           "value": "past-supporter",
-          "next": "b4a",
+          "next": "b4-past-engagement",
           "setVariables": {
             "is_current_supporter": false,
             "is_past_supporter": true,
@@ -314,6 +314,20 @@
           "next": "b4a-other"
         }
       ]
+    },
+    "b4-past-engagement": {
+      "id": "b4-past-engagement",
+      "type": "single-choice",
+      "content": "Welcome back! When was the last time you engaged or donated to the Greater Hartford Arts Council?",
+      "variable": "last_engagement_window",
+      "options": [
+        { "id": "y2025_2020", "label": "2025-2020", "value": "2025-2020" },
+        { "id": "y2019_2014", "label": "2019-2014", "value": "2019-2014" },
+        { "id": "y2013_2008", "label": "2013-2008", "value": "2013-2008" },
+        { "id": "y2007_2002", "label": "2007-2002", "value": "2007-2002" },
+        { "id": "y2001_1996", "label": "2001-1996", "value": "2001-1996" }
+      ],
+      "next": "b4a"
     },
     "b4a": {
       "id": "b4a",
