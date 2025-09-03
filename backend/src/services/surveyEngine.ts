@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger';
 import { createClient } from 'redis';
-const surveyStructure = require('../database/survey-structure.json');
+import surveyStructure from '../database/survey-structure.json';
 
 interface SurveyState {
   surveyId: string;
@@ -389,7 +389,7 @@ class SurveyEngine {
         logger.debug(`Returning VideoAsk block: ${nextBlockId}`, {
           id: nextBlock.id,
           type: nextBlock.type,
-          videoAskFormId: nextBlock.videoAskFormId,
+          videoAskFormId: (nextBlock as any).videoAskFormId,
           content: nextBlock.content
         });
       }
@@ -476,7 +476,7 @@ class SurveyEngine {
     ];
     
     // Add conditional blocks based on user's path
-    let expectedBlocks = [...mainPath];
+    const expectedBlocks = [...mainPath];
     
     // Contact confirmation and sub-forms
     const contactNeeded = !!state.variables.contact_info_needed;

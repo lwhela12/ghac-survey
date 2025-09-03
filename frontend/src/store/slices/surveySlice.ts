@@ -4,6 +4,7 @@ import { Question } from '../../types/survey';
 
 interface SurveySliceState {
   sessionId: string | null;
+  responseId: string | null;
   currentQuestion: Question | null;
   progress: number;
   messages: Array<{
@@ -20,6 +21,7 @@ interface SurveySliceState {
 
 const initialState: SurveySliceState = {
   sessionId: null,
+  responseId: null,
   currentQuestion: null,
   progress: 0,
   messages: [],
@@ -114,6 +116,7 @@ const surveySlice = createSlice({
       .addCase(startSurvey.fulfilled, (state, action) => {
         state.isLoading = false;
         state.sessionId = action.payload.sessionId;
+        state.responseId = action.payload.responseId || null;
         state.currentQuestion = action.payload.firstQuestion;
         // Add the first question as a bot message only if it has content
         if (action.payload.firstQuestion) {
@@ -200,6 +203,7 @@ const surveySlice = createSlice({
         state.sessionId = action.payload.sessionId;
         state.currentQuestion = action.payload.currentQuestion;
         state.progress = action.payload.progress || 0;
+        state.responseId = action.payload.responseId || state.responseId || null;
         
         // Add current question to messages if it exists
         if (action.payload.currentQuestion) {

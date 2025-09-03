@@ -8,6 +8,7 @@ interface JwtPayload {
   role: string;
 }
 
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
   namespace Express {
     interface Request {
@@ -15,6 +16,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
 export const authenticateAdmin = (req: Request, _res: Response, next: NextFunction) => {
   try {

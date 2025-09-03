@@ -20,7 +20,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart }) => {
         </Subtitle>
         
         <StartButton onClick={onStart}>
-          <ButtonText>Let's Chat!</ButtonText>
+          <ButtonText>Let&apos;s Chat!</ButtonText>
         </StartButton>
       </ContentWrapper>
     </Container>

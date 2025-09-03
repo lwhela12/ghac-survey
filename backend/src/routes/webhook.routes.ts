@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger';
 import { getDb } from '../database/initialize';
+import { surveyEngine } from '../services/surveyEngine';
 
 const router = Router();
 
@@ -22,6 +23,10 @@ router.post('/videoask', async (req: Request, res: Response) => {
       contact,
       form
     } = req.body;
+    // Hidden variables passed via VideoAsk URL (if configured)
+    const hiddenVars = (contact?.variables || req.body?.variables || {}) as Record<string, any>;
+    const sessionIdVar: string | undefined = hiddenVars.sid || hiddenVars.sessionId || hiddenVars.session_id;
+    const responseIdVar: string | undefined = hiddenVars.rid || hiddenVars.responseId || hiddenVars.response_id;
     // VideoAsk nests answers under contact
     const answers = Array.isArray(contact?.answers) ? contact.answers : [];
 
@@ -52,11 +57,13 @@ router.post('/videoask', async (req: Request, res: Response) => {
     if (event_type === 'form_response' && answers && answers.length > 0) {
       const videoAnswer = answers[0]; // Get the first answer
       
-      // Extract video/audio response details
-      // VideoAsk may nest media info under answer or at top-level
-      const mediaUrl = videoAnswer?.answer?.media_url || videoAnswer?.media_url;
-      const mediaType = videoAnswer?.answer?.media_type || videoAnswer?.media_type || videoAnswer?.type;
-      const transcript = videoAnswer?.answer?.transcript || videoAnswer?.transcript;
+      // Extract response details based on type
+      // Text responses have 'input_text', video/audio have 'media_url'
+      const responseType = videoAnswer?.type || videoAnswer?.media_type;
+      const inputText = videoAnswer?.input_text; // For text responses
+      const mediaUrl = videoAnswer?.answer?.media_url || videoAnswer?.media_url; // For video/audio
+      const mediaType = responseType;
+      const transcript = videoAnswer?.answer?.transcript || videoAnswer?.transcript; // For video/audio transcriptions
       const duration = videoAnswer?.answer?.duration || videoAnswer?.media_duration;
       
       logger.debug('Processing VideoAsk response:', {
@@ -65,34 +72,54 @@ router.post('/videoask', async (req: Request, res: Response) => {
         questionId: questionIdMap[form?.share_id] || 'unknown',
         mediaUrl,
         mediaType,
+        inputText,
         hasTranscript: !!transcript,
-        duration
+        hasInputText: !!inputText,
+        duration,
+        hiddenVars
       });
       
       // Get database connection
       const db = getDb();
       
-      if (db && mediaUrl) {
+      // Process if we have either text or media content
+      if (db && (mediaUrl || inputText)) {
         // Determine which block to update based on form share ID
-        const questionId = questionIdMap[form?.share_id] || 'b7';
-        logger.debug('VideoAsk will update answer block', { formShareId: form?.share_id, questionId, mediaUrl });
+        const shareId = form?.share_id;
+        const questionId = questionIdMap[shareId as string];
+        if (!questionId) {
+          logger.warn('Unknown VideoAsk share_id received; skipping update to avoid wrong block mapping', { shareId });
+          res.status(200).json({ status: 'ignored', reason: 'unknown_share_id' });
+          return;
+        }
+
+        // Try to scope to a specific respondent using hidden variables
+        let scopedResponseId: string | null = null;
+        if (responseIdVar && typeof responseIdVar === 'string') {
+          scopedResponseId = responseIdVar;
+        } else if (sessionIdVar && typeof sessionIdVar === 'string') {
+          try {
+            const state = await surveyEngine.getState(sessionIdVar);
+            if (state?.responseId) scopedResponseId = state.responseId;
+          } catch (e) {
+            logger.warn('Failed to resolve responseId from sessionId for webhook', { sessionIdVar, error: (e as any)?.message });
+          }
+        }
+        logger.debug('VideoAsk will update answer block', { 
+          formShareId: form?.share_id, 
+          questionId, 
+          mediaUrl,
+          inputText,
+          mediaType,
+          scopedResponseId
+        });
         
-        const updateQuery = `
-          UPDATE answers
-          SET
-            video_url = $1,
-            metadata = jsonb_set(
-              COALESCE(metadata, '{}')::jsonb,
-              '{webhookData}',
-              $2::jsonb
-            )
-          WHERE metadata->>'blockId' = $3
-          RETURNING *
-        `;
-        
+        // Different update query based on response type
+        let updateQuery: string;
         const webhookData = {
           mediaUrl,
           mediaType,
+          inputText,
           transcript,
           duration,
           interactionId: interaction_id,
@@ -100,21 +127,111 @@ router.post('/videoask', async (req: Request, res: Response) => {
           receivedAt: new Date().toISOString()
         };
         
+        if (mediaType === 'text' && inputText) {
+          // For text responses, update answer_text field
+          if (scopedResponseId) {
+            updateQuery = `
+              UPDATE answers
+              SET
+                answer_text = $1,
+                metadata = jsonb_set(
+                  COALESCE(metadata, '{}')::jsonb,
+                  '{webhookData}',
+                  $2::jsonb
+                )
+              WHERE metadata->>'blockId' = $3
+                AND response_id = $4
+              RETURNING *
+            `;
+          } else {
+            // Fallback: only update the most recent empty text row for this block
+            updateQuery = `
+              WITH target AS (
+                SELECT id FROM answers
+                WHERE metadata->>'blockId' = $3
+                  AND answer_text IS NULL
+                ORDER BY answered_at DESC
+                LIMIT 1
+              )
+              UPDATE answers
+              SET
+                answer_text = $1,
+                metadata = jsonb_set(
+                  COALESCE(metadata, '{}')::jsonb,
+                  '{webhookData}',
+                  $2::jsonb
+                )
+              WHERE id IN (SELECT id FROM target)
+              RETURNING *
+            `;
+          }
+        } else {
+          // For video/audio responses, update video_url field
+          if (scopedResponseId) {
+            updateQuery = `
+              UPDATE answers
+              SET
+                video_url = $1,
+                metadata = jsonb_set(
+                  COALESCE(metadata, '{}')::jsonb,
+                  '{webhookData}',
+                  $2::jsonb
+                )
+              WHERE metadata->>'blockId' = $3
+                AND response_id = $4
+              RETURNING *
+            `;
+          } else {
+            // Fallback: only update the most recent empty media row for this block
+            updateQuery = `
+              WITH target AS (
+                SELECT id FROM answers
+                WHERE metadata->>'blockId' = $3
+                  AND video_url IS NULL
+                ORDER BY answered_at DESC
+                LIMIT 1
+              )
+              UPDATE answers
+              SET
+                video_url = $1,
+                metadata = jsonb_set(
+                  COALESCE(metadata, '{}')::jsonb,
+                  '{webhookData}',
+                  $2::jsonb
+                )
+              WHERE id IN (SELECT id FROM target)
+              RETURNING *
+            `;
+          }
+        }
+        
         try {
-          logger.debug('VideoAsk updateQuery params', { mediaUrl, webhookData, questionId });
-          const result = await db.query(updateQuery, [
-            mediaUrl,
-            JSON.stringify(webhookData),
-            questionId
-          ]);
+          logger.debug('VideoAsk updateQuery params', { 
+            questionId,
+            mediaType,
+            contentValue: mediaType === 'text' ? inputText : mediaUrl
+          });
+          const baseParams = (mediaType === 'text' && inputText)
+            ? [inputText, JSON.stringify(webhookData), questionId]
+            : [mediaUrl, JSON.stringify(webhookData), questionId];
+          const params = scopedResponseId ? [...baseParams, scopedResponseId] : baseParams;
+          const result = await db.query(updateQuery, params);
           
           if (result.rows.length > 0) {
             logger.info('Successfully updated answer with VideoAsk webhook data:', {
               answerId: result.rows[0].id,
-              videoUrl: mediaUrl
+              questionId,
+              mediaType,
+              videoUrl: mediaUrl,
+              textContent: inputText
             });
           } else {
-            logger.warn('No matching answer found to update with VideoAsk webhook data', { questionId, mediaUrl });
+            logger.warn('No matching answer found to update with VideoAsk webhook data', { 
+              questionId, 
+              mediaType,
+              contentAvailable: !!(mediaUrl || inputText),
+              scopedResponseIdPresent: !!scopedResponseId
+            });
           }
         } catch (updateError) {
           logger.error('Failed to update answer with VideoAsk webhook data:', updateError);
@@ -122,8 +239,12 @@ router.post('/videoask', async (req: Request, res: Response) => {
       } else {
         if (!db) {
           logger.warn('No database connection available to store VideoAsk webhook data');
-        } else if (!mediaUrl) {
-          logger.warn('No media URL in VideoAsk response');
+        } else if (!mediaUrl && !inputText) {
+          logger.warn('No content (media URL or text) in VideoAsk response', {
+            mediaType,
+            hasMediaUrl: !!mediaUrl,
+            hasInputText: !!inputText
+          });
         }
       }
     }

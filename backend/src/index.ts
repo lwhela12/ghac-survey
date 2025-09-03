@@ -10,7 +10,7 @@ import adminRoutes from './routes/admin.routes';
 import clerkAdminRoutes from './routes/clerkAdmin.routes';
 import webhookRoutes from './routes/webhook.routes';
 // import adminMockRoutes from './routes/admin-mock.routes';
-import { initializeDatabase } from './database/initialize';
+import { initializeDatabase, getDb } from './database/initialize';
 import { logger } from './utils/logger';
 
 dotenv.config();
@@ -48,7 +48,6 @@ app.get('/health', (_req, res) => {
 
 // Debug endpoint
 app.get('/debug/db', (_req, res) => {
-  const { getDb } = require('./database/initialize');
   const db = getDb();
   res.json({ 
     hasDb: !!db,

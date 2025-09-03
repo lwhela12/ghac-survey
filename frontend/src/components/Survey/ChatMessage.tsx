@@ -2,7 +2,7 @@
 import React, { useEffect, forwardRef, memo } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import amandaIcon from '../../assets/images/Amanda_icon.png';
-import { useAppDispatch } from '../../hooks/redux';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { submitAnswer } from '../../store/slices/surveySlice';
 import VideoAskQuestion from './QuestionTypes/VideoAskQuestion';
 import QuestionRenderer from './QuestionRenderer';
@@ -20,6 +20,8 @@ interface ChatMessageProps {
 
 const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message, isCurrentQuestion = false }, ref) => {
   const dispatch = useAppDispatch();
+  const sessionId = useAppSelector((state) => (state as any).survey?.sessionId || null);
+  const responseId = useAppSelector((state) => (state as any).survey?.responseId || null);
   const [videoCompleted] = React.useState(false);
 
   useEffect(() => {
@@ -194,6 +196,8 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message, isC
                 question={message.question}
                 onAnswer={handleVideoAskAnswer}
                 disabled={!isCurrentQuestion}
+                sessionId={sessionId}
+                responseId={responseId}
               />
             </VideoAskWrapper>
             <Timestamp type={message.type}>{formatTime(message.timestamp)}</Timestamp>
@@ -210,6 +214,8 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message, isC
     </Container>
   );
 });
+
+ChatMessage.displayName = 'ChatMessage';
 
 const fadeInUp = keyframes`
   from {

@@ -33,6 +33,7 @@ class SurveyController {
 
       res.json({
         sessionId,
+        responseId: surveyResponse.id,
         firstQuestion: surveyEngine.formatQuestionForClient(firstQuestion, { user_name: name })
       });
     } catch (error) {
@@ -142,7 +143,8 @@ class SurveyController {
           surveyEngine.formatQuestionForClient(currentQuestion, surveyState.variables) :
           null,
         progress,
-        isComplete: !currentQuestion
+        isComplete: !currentQuestion,
+        responseId: surveyState.responseId
       });
     } catch (error) {
       next(error);

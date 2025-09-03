@@ -6,9 +6,11 @@ interface VideoAskQuestionProps {
   question: Question;
   onAnswer: (answer: any) => void;
   disabled?: boolean;
+  sessionId?: string | null;
+  responseId?: string | null;
 }
 
-const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer, disabled }) => {
+const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer, disabled, sessionId, responseId }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasResponded, setHasResponded] = useState(false);
@@ -61,9 +63,19 @@ const VideoAskQuestion: React.FC<VideoAskQuestionProps> = ({ question, onAnswer,
     onAnswer({ type: 'skipped' });
   };
 
-  // Load paused with audio ready (no autoplay, not muted) to mirror intro behavior
-  // playsinline to avoid fullscreen on mobile
-  const videoAskSrc = `https://www.videoask.com/${question.videoAskFormId}?autoplay=0&muted=0&playsinline=1&delay_response=1`;
+  // Build VideoAsk iframe URL with hidden variables to correlate webhook
+  // - sid: current survey sessionId (backend can map to response_id)
+  // - bid: blockId (question.id, e.g., b7 or b12)
+  const params = new URLSearchParams({
+    autoplay: '0',
+    muted: '0',
+    playsinline: '1',
+    delay_response: '1',
+  });
+  if (sessionId) params.set('sid', sessionId);
+  if (responseId) params.set('rid', responseId);
+  if (question?.id) params.set('bid', question.id);
+  const videoAskSrc = `https://www.videoask.com/${question.videoAskFormId}?${params.toString()}`;
 
   return (
     <Container>

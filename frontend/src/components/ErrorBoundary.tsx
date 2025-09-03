@@ -37,7 +37,7 @@ class ErrorBoundary extends Component<Props, State> {
             <ErrorIcon>⚠️</ErrorIcon>
             <ErrorTitle>Oops! Something went wrong</ErrorTitle>
             <ErrorMessage>
-              Don't worry - your progress has been saved. Please refresh the page to continue.
+              Don&apos;t worry - your progress has been saved. Please refresh the page to continue.
             </ErrorMessage>
             <ReloadButton onClick={this.handleReload}>
               Refresh Page

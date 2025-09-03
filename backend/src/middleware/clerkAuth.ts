@@ -4,6 +4,7 @@ import { createClerkClient } from '@clerk/clerk-sdk-node';
 const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 
 // Extend Express Request type to include auth
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
   namespace Express {
     interface Request {
@@ -14,6 +15,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
 export const requireClerkAuth = async (
   req: Request,

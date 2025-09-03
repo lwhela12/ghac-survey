@@ -5,8 +5,8 @@ import jwt from 'jsonwebtoken';
 import { getDb } from '../database/initialize';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
-import QueryStream from 'pg-query-stream';
-import { format, Transform } from 'fast-csv';
+import { format } from 'fast-csv';
+import surveyStructure from '../database/survey-structure.json';
 
 class AdminController {
   async login(req: Request, res: Response, next: NextFunction) {
@@ -442,7 +442,6 @@ class AdminController {
     }
 
     try {
-      const surveyStructure = require('../database/survey-structure.json');
       const questionOrder = surveyStructure.survey.sections.flatMap(s => s.blocks);
       const questionTextMap = new Map(Object.entries(surveyStructure.blocks).map(([id, block]) => [id, block.content || id]));
 
@@ -556,7 +555,6 @@ class AdminController {
         return res.json({ questionStats: [] });
       }
 
-      const surveyStructure = require('../database/survey-structure.json');
       const questions = Object.entries(surveyStructure.blocks)
         .filter(([, block]) => {
           const b = block as any;
