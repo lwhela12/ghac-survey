@@ -39,14 +39,34 @@ clerkApi.interceptors.request.use(async (config) => {
 // Admin API endpoints using Clerk auth
 export const clerkAdminApi = {
   // Response management
-  getResponses: (page = 1, limit = 10) => 
-    clerkApi.get(`/api/clerk-admin/responses?page=${page}&limit=${limit}`),
+  getResponses: (page = 1, limit = 10, opts?: { status?: string; tests?: 'exclude'|'include'|'only' }) => {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('limit', String(limit));
+    if (opts?.status && opts.status !== 'all') params.set('status', opts.status);
+    if (opts?.tests) params.set('tests', opts.tests);
+    return clerkApi.get(`/api/clerk-admin/responses?${params.toString()}`);
+  },
   
   getResponseDetail: (responseId: string) => 
     clerkApi.get(`/api/clerk-admin/responses/${responseId}`),
   
   exportResponses: (surveyId: string) => 
     clerkApi.get(`/api/clerk-admin/export?surveyId=${surveyId}`, { responseType: 'blob' }),
+
+  markResponseTest: (responseId: string, isTest: boolean) => 
+    clerkApi.patch(`/api/clerk-admin/responses/${responseId}/test`, { isTest }),
+
+  deleteResponse: (responseId: string) => 
+    clerkApi.delete(`/api/clerk-admin/responses/${responseId}`),
+
+  deleteResponses: (opts: { all?: boolean; onlyTest?: boolean; confirm: string }) => {
+    const params = new URLSearchParams();
+    if (opts.all) params.set('all', 'true');
+    if (opts.onlyTest) params.set('onlyTest', 'true');
+    params.set('confirm', opts.confirm);
+    return clerkApi.delete(`/api/clerk-admin/responses?${params.toString()}`);
+  },
   
   // Analytics
   getAnalyticsSummary: () => 

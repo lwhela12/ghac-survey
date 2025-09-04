@@ -11,6 +11,7 @@ interface Response {
   completed_at: string | null;
   survey_name: string;
   answer_count: number;
+  is_test?: boolean;
 }
 
 const ResponsesList: React.FC = () => {
@@ -20,15 +21,16 @@ const ResponsesList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [testsFilter, setTestsFilter] = useState<'exclude'|'include'|'only'>('exclude');
 
   useEffect(() => {
     loadResponses();
-  }, [currentPage, statusFilter]);
+  }, [currentPage, statusFilter, testsFilter]);
 
   const loadResponses = async () => {
     try {
       setIsLoading(true);
-      const response = await clerkAdminApi.getResponses(currentPage, 20);
+      const response = await clerkAdminApi.getResponses(currentPage, 20, { status: statusFilter, tests: testsFilter });
       const data = response.data;
       setResponses(data.responses || []);
       setTotalPages(data.pagination?.totalPages || 1);
@@ -73,6 +75,17 @@ const ResponsesList: React.FC = () => {
             <option value="completed">Completed Only</option>
             <option value="incomplete">In Progress Only</option>
           </FilterSelect>
+          <FilterSelect
+            value={testsFilter}
+            onChange={(e) => {
+              setTestsFilter(e.target.value as any);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="exclude">Hide Test</option>
+            <option value="include">Include Test</option>
+            <option value="only">Only Test</option>
+          </FilterSelect>
           <ExportButton
             onClick={async () => {
               try {
@@ -93,6 +106,21 @@ const ResponsesList: React.FC = () => {
           >
             💾 Export CSV
           </ExportButton>
+          <DangerButton
+            onClick={async () => {
+              const sure = window.confirm('Delete ALL test responses? This cannot be undone.');
+              if (!sure) return;
+              try {
+                await clerkAdminApi.deleteResponses({ onlyTest: true, confirm: 'DELETE TEST' });
+                loadResponses();
+              } catch (e) {
+                alert('Failed to delete test responses');
+              }
+            }}
+          >
+            🗑 Delete Test
+          </DangerButton>
+          {/* Removed Delete ALL for safety */}
         </Controls>
       </Header>
 
@@ -124,7 +152,7 @@ const ResponsesList: React.FC = () => {
                 <TableRow key={response.id} onClick={() => navigate(`/admin/responses/${response.id}`)}>
                   <td>
                     <RespondentName>
-                      {response.respondent_name || 'Anonymous'}
+                      {response.respondent_name || 'Anonymous'} {response.is_test ? <TestBadge>TEST</TestBadge> : null}
                     </RespondentName>
                   </td>
                   <td>{formatDate(response.started_at)}</td>
@@ -135,12 +163,30 @@ const ResponsesList: React.FC = () => {
                   </td>
                   <td>{response.answer_count}</td>
                   <td>
-                    <ViewButton onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/admin/responses/${response.id}`);
-                    }}>
-                      View Details →
-                    </ViewButton>
+                    <InlineActions>
+                      <ViewButton onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/admin/responses/${response.id}`);
+                      }}>
+                        View
+                      </ViewButton>
+                      <ViewButton onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await clerkAdminApi.markResponseTest(response.id, !response.is_test);
+                          loadResponses();
+                        } catch (err) {
+                          alert('Failed to update test flag');
+                        }
+                      }}>
+                        {response.is_test ? 'Unmark Test' : 'Mark Test'}
+                      </ViewButton>
+                      <DangerSmall onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!window.confirm('Delete this response? This cannot be undone.')) return;
+                        try { await clerkAdminApi.deleteResponse(response.id); loadResponses(); } catch (err) { alert('Delete failed'); }
+                      }}>Delete</DangerSmall>
+                    </InlineActions>
                   </td>
                 </TableRow>
               ))}
@@ -226,6 +272,36 @@ const ExportButton = styled.button`
     background: #357ABD;
     transform: translateY(-1px);
   }
+`;
+
+const DangerButton = styled(ExportButton)`
+  background: #dc2626;
+  &:hover { background: #b91c1c; }
+`;
+
+const InlineActions = styled.div`
+  display: flex;
+  gap: ${({ theme }) => theme.spacing.sm};
+`;
+
+const DangerSmall = styled.button`
+  padding: 6px 10px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  &:hover { background: #dc2626; }
+`;
+
+const TestBadge = styled.span`
+  margin-left: 6px;
+  background: #fde68a;
+  color: #92400e;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12px;
 `;
 
 const LoadingContainer = styled.div`

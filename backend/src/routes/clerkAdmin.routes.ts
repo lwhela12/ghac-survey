@@ -11,6 +11,9 @@ router.use(requireClerkAuth);
 router.get('/responses', adminController.getResponses);
 router.get('/responses/:responseId', adminController.getResponseDetail);
 router.get('/export', adminController.exportResponses);
+router.patch('/responses/:responseId/test', adminController.markResponseTest);
+router.delete('/responses/:responseId', adminController.deleteResponse);
+router.delete('/responses', adminController.deleteResponses);
 
 // Analytics
 router.get('/analytics/summary', adminController.getAnalyticsSummary);

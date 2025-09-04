@@ -150,7 +150,7 @@ class AdminController {
 
   async getResponses(req: Request, res: Response, next: NextFunction) {
     try {
-      const { page = 1, limit = 20, surveyId, status } = req.query;
+      const { page = 1, limit = 20, surveyId, status, tests } = req.query;
       const offset = (Number(page) - 1) * Number(limit);
       const db = getDb();
       
@@ -218,6 +218,7 @@ class AdminController {
           r.started_at,
           r.completed_at,
           s.name as survey_name,
+          (r.metadata->>'is_test')::boolean as is_test,
           COUNT(DISTINCT CASE 
             WHEN a.metadata->>'blockId' NOT IN (
               'b0', 'b0a', 'b1a', 'b1a-skip', 'b1b', 'b1c',
@@ -254,6 +255,16 @@ class AdminController {
         query += ` AND r.completed_at IS NULL`;
       }
 
+      // tests filter: default exclude tests; tests=include to include both; tests=only to show only tests
+      if (tests === 'only') {
+        query += ` AND (r.metadata->>'is_test')::boolean IS TRUE`;
+      } else if (tests === 'include') {
+        // no filter
+      } else {
+        // default exclude
+        query += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
+      }
+
       query += `
         GROUP BY r.id, s.name, name_answer.answer_text
         ORDER BY r.started_at DESC
@@ -279,6 +290,13 @@ class AdminController {
       } else if (status === 'incomplete') {
         countQuery += ` AND r.completed_at IS NULL`;
       }
+      if (tests === 'only') {
+        countQuery += ` AND (r.metadata->>'is_test')::boolean IS TRUE`;
+      } else if (tests === 'include') {
+        // no filter
+      } else {
+        countQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
+      }
 
       const countResult = await db.query(countQuery, surveyId ? [surveyId] : []);
       const total = parseInt(countResult.rows[0].total);
@@ -295,6 +313,62 @@ class AdminController {
     } catch (error) {
       next(error);
       return;
+    }
+  }
+
+  async markResponseTest(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { responseId } = req.params;
+      const { isTest } = req.body as { isTest: boolean };
+      const db = getDb();
+      if (!db) return res.status(503).json({ status: 'error', message: 'Database not connected' });
+
+      const query = `
+        UPDATE responses
+        SET metadata = jsonb_set(COALESCE(metadata,'{}')::jsonb, '{is_test}', $1::jsonb)
+        WHERE id = $2
+        RETURNING id, (metadata->>'is_test')::boolean as is_test
+      `;
+      const result = await db.query(query, [JSON.stringify(!!isTest), responseId]);
+      if (result.rowCount === 0) return res.status(404).json({ status: 'error', message: 'Response not found' });
+      return res.json({ status: 'ok', responseId, is_test: result.rows[0].is_test });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteResponse(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { responseId } = req.params;
+      const db = getDb();
+      if (!db) return res.status(503).json({ status: 'error', message: 'Database not connected' });
+      const result = await db.query('DELETE FROM responses WHERE id = $1', [responseId]);
+      if (result.rowCount === 0) return res.status(404).json({ status: 'error', message: 'Response not found' });
+      return res.json({ status: 'ok', deleted: 1 });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteResponses(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { all, onlyTest, confirm } = req.query as any;
+      const db = getDb();
+      if (!db) return res.status(503).json({ status: 'error', message: 'Database not connected' });
+
+      if (all === 'true') {
+        if (confirm !== 'DELETE ALL') return res.status(400).json({ status: 'error', message: 'Confirmation phrase required' });
+        const result = await db.query('DELETE FROM responses');
+        return res.json({ status: 'ok', deleted: result.rowCount || 0 });
+      }
+      if (onlyTest === 'true') {
+        if (confirm !== 'DELETE TEST') return res.status(400).json({ status: 'error', message: 'Confirmation phrase required' });
+        const result = await db.query("DELETE FROM responses WHERE COALESCE((metadata->>'is_test')::boolean, FALSE) IS TRUE");
+        return res.json({ status: 'ok', deleted: result.rowCount || 0 });
+      }
+      return res.status(400).json({ status: 'error', message: 'Specify all=true or onlyTest=true' });
+    } catch (error) {
+      next(error);
     }
   }
 
@@ -436,7 +510,7 @@ class AdminController {
       return res.status(503).send('Database not connected');
     }
 
-    const { surveyId } = req.query;
+    const { surveyId, tests } = req.query as any;
     if (!surveyId) {
       return res.status(400).send('surveyId is required');
     }
@@ -445,7 +519,7 @@ class AdminController {
       const questionOrder = surveyStructure.survey.sections.flatMap(s => s.blocks);
       const questionTextMap = new Map(Object.entries(surveyStructure.blocks).map(([id, block]) => [id, block.content || id]));
 
-      const query = `
+      let query = `
         SELECT 
           r.id as response_id,
           COALESCE(name_answer.answer_text, r.respondent_name) as respondent_name,
@@ -461,8 +535,16 @@ class AdminController {
         LEFT JOIN answers name_answer ON r.id = name_answer.response_id 
           AND name_answer.metadata->>'blockId' = 'b3'
         WHERE r.survey_id = $1
-        ORDER BY r.started_at, a.answered_at
       `;
+      if (tests === 'only') {
+        query += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS TRUE`;
+      } else if (tests === 'include') {
+        // no-op include both
+      } else {
+        // default exclude
+        query += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
+      }
+      query += ` ORDER BY r.started_at, a.answered_at`;
 
       const { rows } = await db.query(query, [surveyId]);
 
@@ -548,7 +630,7 @@ class AdminController {
     }
   }
 
-    async getQuestionStats(req: Request, res: Response, next: NextFunction) {
+  async getQuestionStats(req: Request, res: Response, next: NextFunction) {
     try {
       const db = getDb();
       if (!db) {
@@ -575,17 +657,26 @@ class AdminController {
         return res.json({ questionStats: [] });
       }
 
-      const statsQuery = `
+      const { tests } = req.query as any;
+      let statsQuery = `
         SELECT 
-          metadata->>'blockId' as "questionId",
-          answer_text,
-          answer_choice_ids,
+          a.metadata->>'blockId' as "questionId",
+          a.answer_text,
+          a.answer_choice_ids,
           COUNT(*) as count
-        FROM answers
-        WHERE metadata->>'blockId' = ANY($1::text[])
-        GROUP BY metadata->>'blockId', answer_text, answer_choice_ids
+        FROM answers a
+        JOIN responses r ON r.id = a.response_id
+        WHERE a.metadata->>'blockId' = ANY($1::text[])
       `;
-      
+      if (tests === 'only') {
+        statsQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS TRUE`;
+      } else if (tests === 'include') {
+        // include both
+      } else {
+        statsQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
+      }
+      statsQuery += ` GROUP BY a.metadata->>'blockId', a.answer_text, a.answer_choice_ids`;
+
       const result = await db.query(statsQuery, [questionIds]);
       
       const statsByQuestion = result.rows.reduce((acc, row) => {
@@ -653,7 +744,7 @@ class AdminController {
 
   async getAnalyticsSummary(req: Request, res: Response, next: NextFunction) {
     try {
-      const { surveyId } = req.query;
+      const { surveyId, tests } = req.query as any;
       const db = getDb();
       
       // If no database, return mock analytics
@@ -667,7 +758,7 @@ class AdminController {
         return res.json(mockAnalytics);
       }
 
-      const summaryQuery = `
+      let summaryQuery = `
         SELECT 
           COUNT(DISTINCT r.id) as total_responses,
           COUNT(DISTINCT CASE WHEN r.completed_at IS NOT NULL THEN r.id END) as completed_responses,
@@ -675,6 +766,13 @@ class AdminController {
         FROM responses r
         WHERE r.survey_id = $1
       `;
+      if (tests === 'only') {
+        summaryQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS TRUE`;
+      } else if (tests === 'include') {
+        // no-op include
+      } else {
+        summaryQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
+      }
 
       const result = await db.query(summaryQuery, [surveyId]);
       
