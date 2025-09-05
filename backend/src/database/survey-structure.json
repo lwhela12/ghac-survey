@@ -1272,8 +1272,8 @@
         "else": "great"
       },
       "content": {
-        "great": "Great! Follow us on social media for updates.\n\nFind us on [Facebook](https://www.facebook.com/greaterhartfordarts/), [Instagram](https://www.instagram.com/letsgoarts/), [X](https://x.com/LetsGoArts_org), and [LinkedIn](https://www.linkedin.com/company/greater-hartford-arts-council/).\n\nThank you for connecting with us!",
-        "also": "Also! Follow us on social media for updates.\n\nFind us on [Facebook](https://www.facebook.com/greaterhartfordarts/), [Instagram](https://www.instagram.com/letsgoarts/), [X](https://x.com/LetsGoArts_org), and [LinkedIn](https://www.linkedin.com/company/greater-hartford-arts-council/).\n\nThank you for connecting with us!"
+        "great": "Great! Follow us on social media for updates.\n\nFind us on [Facebook](https://www.facebook.com/greaterhartfordarts/), [Instagram](https://www.instagram.com/letsgoarts/), and [LinkedIn](https://www.linkedin.com/company/greater-hartford-arts-council/).\n\nThank you for connecting with us!",
+        "also": "Also! Follow us on social media for updates.\n\nFind us on [Facebook](https://www.facebook.com/greaterhartfordarts/), [Instagram](https://www.instagram.com/letsgoarts/), and [LinkedIn](https://www.linkedin.com/company/greater-hartford-arts-council/).\n\nThank you for connecting with us!"
       },
       "autoAdvance": true,
       "autoAdvanceDelay": 5000,
