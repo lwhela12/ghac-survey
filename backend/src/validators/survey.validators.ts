@@ -2,7 +2,21 @@ import Joi from 'joi';
 
 export const startSurveySchema = Joi.object({
   name: Joi.string().optional().allow('').max(255),
-  surveyId: Joi.string().required()
+  surveyId: Joi.string().required(),
+  tracking: Joi.object({
+    cohort: Joi.string().optional().allow(''),
+    referrer: Joi.string().optional().allow(''),
+    landingUrl: Joi.string().optional().allow(''),
+    landingPath: Joi.string().optional().allow(''),
+    capturedAt: Joi.string().optional().allow(''),
+    utm: Joi.object({
+      source: Joi.string().optional().allow(''),
+      medium: Joi.string().optional().allow(''),
+      campaign: Joi.string().optional().allow(''),
+      term: Joi.string().optional().allow(''),
+      content: Joi.string().optional().allow(''),
+    }).unknown(true).optional(),
+  }).unknown(true).optional()
 });
 
 export const submitAnswerSchema = Joi.object({

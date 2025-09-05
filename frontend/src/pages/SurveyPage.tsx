@@ -7,6 +7,7 @@ import ProgressBar from '../components/Survey/ProgressBar';
 import { initializeSurvey, resumeSurvey } from '../store/slices/surveySlice';
 import { surveyApi } from '../services/api';
 import ghacLogo from '../assets/images/GHAC.jpg';
+import { captureFirstTouchTracking } from '../utils/tracking';
 
 const SurveyPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -18,6 +19,9 @@ const SurveyPage: React.FC = () => {
   const showHeader = !currentQuestion || currentQuestion.id === 'b0' || currentQuestion.id === 'b0a';
 
   useEffect(() => {
+    // Capture first-touch attribution (UTM, referrer, cohort) on initial load
+    captureFirstTouchTracking();
+
     const checkForExistingSession = async () => {
       const sessionCheck = await surveyApi.checkExistingSession();
       

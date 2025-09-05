@@ -8,14 +8,21 @@ import { logger } from '../utils/logger';
 class SurveyController {
   async startSurvey(req: Request, res: Response, next: NextFunction) {
     try {
-      const { name, surveyId } = req.body;
+      const { name, surveyId, tracking } = req.body;
       const sessionId = uuidv4();
 
       // Initialize survey response
+      const metadata: any = {};
+      if (tracking) {
+        metadata.tracking = tracking;
+        if (tracking.cohort) metadata.cohort = tracking.cohort;
+      }
+
       const surveyResponse = await surveyService.createResponse({
         surveyId,
         sessionId,
-        respondentName: name || null
+        respondentName: name || null,
+        metadata
       });
 
       // Get first question

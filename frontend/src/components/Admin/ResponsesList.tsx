@@ -12,6 +12,7 @@ interface Response {
   survey_name: string;
   answer_count: number;
   is_test?: boolean;
+  cohort?: string | null;
 }
 
 const ResponsesList: React.FC = () => {
@@ -22,15 +23,20 @@ const ResponsesList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [testsFilter, setTestsFilter] = useState<'exclude'|'include'|'only'>('exclude');
+  const [cohortFilter, setCohortFilter] = useState<string>('');
 
   useEffect(() => {
     loadResponses();
-  }, [currentPage, statusFilter, testsFilter]);
+  }, [currentPage, statusFilter, testsFilter, cohortFilter]);
 
   const loadResponses = async () => {
     try {
       setIsLoading(true);
-      const response = await clerkAdminApi.getResponses(currentPage, 20, { status: statusFilter, tests: testsFilter });
+      const response = await clerkAdminApi.getResponses(
+        currentPage,
+        20,
+        { status: statusFilter, tests: testsFilter, cohort: cohortFilter || undefined }
+      );
       const data = response.data;
       setResponses(data.responses || []);
       setTotalPages(data.pagination?.totalPages || 1);
@@ -64,6 +70,15 @@ const ResponsesList: React.FC = () => {
       <Header>
         <Title>Survey Responses</Title>
         <Controls>
+          <CohortInput
+            type="text"
+            placeholder="Cohort"
+            value={cohortFilter}
+            onChange={(e) => {
+              setCohortFilter(e.target.value.trim());
+              setCurrentPage(1);
+            }}
+          />
           <FilterSelect 
             value={statusFilter} 
             onChange={(e) => {
@@ -89,11 +104,16 @@ const ResponsesList: React.FC = () => {
           <ExportButton
             onClick={async () => {
               try {
-                const response = await clerkAdminApi.exportResponses('11111111-1111-1111-1111-111111111111');
+                const response = await clerkAdminApi.exportResponses(
+                  '11111111-1111-1111-1111-111111111111',
+                  { cohort: cohortFilter || undefined }
+                );
                 const url = window.URL.createObjectURL(response.data);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `ghac-survey-export-${new Date().toISOString().split('T')[0]}.csv`;
+                const date = new Date().toISOString().split('T')[0];
+                const suffix = cohortFilter ? `-cohort-${cohortFilter}` : '';
+                a.download = `ghac-survey-export${suffix}-${date}.csv`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
@@ -143,6 +163,7 @@ const ResponsesList: React.FC = () => {
                 <th>Respondent</th>
                 <th>Started</th>
                 <th>Status</th>
+                <th>Cohort</th>
                 <th>Answers</th>
                 <th>Actions</th>
               </tr>
@@ -161,6 +182,7 @@ const ResponsesList: React.FC = () => {
                       {getStatus(response)}
                     </StatusBadge>
                   </td>
+                  <td>{response.cohort || '-'}</td>
                   <td>{response.answer_count}</td>
                   <td>
                     <InlineActions>
@@ -237,6 +259,20 @@ const Title = styled.h1`
 const Controls = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.spacing.md};
+`;
+
+const CohortInput = styled.input`
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
+  border: 2px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-size: ${({ theme }) => theme.fontSizes.base};
+  font-family: 'Nunito', sans-serif;
+  width: 160px;
+  
+  &:focus {
+    outline: none;
+    border-color: #4A90E2;
+  }
 `;
 
 const FilterSelect = styled.select`

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getFirstTouch, parseFromPage } from '../utils/tracking';
 
 // Use VITE_API_URL if defined (including empty string), otherwise use localhost for dev
 const API_URL = import.meta.env.VITE_API_URL !== undefined 
@@ -100,9 +101,11 @@ const clearStoredSession = () => {
 export const surveyApi = {
   startSurvey: async (name: string) => {
     try {
+      const tracking = getFirstTouch() || parseFromPage();
       const response = await api.post('/api/survey/start', {
         name,
         surveyId: '11111111-1111-1111-1111-111111111111',
+        tracking,
       });
       currentSessionId = response.data.sessionId;
       saveSession(response.data.sessionId);

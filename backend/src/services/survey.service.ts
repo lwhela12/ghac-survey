@@ -6,6 +6,7 @@ interface CreateResponseData {
   surveyId: string;
   sessionId: string;
   respondentName: string | null;
+  metadata?: any;
 }
 
 interface SaveAnswerData {
@@ -26,15 +27,16 @@ class SurveyService {
       }
       
       const query = `
-        INSERT INTO responses (survey_id, session_id, respondent_name)
-        VALUES ($1, $2, $3)
+        INSERT INTO responses (survey_id, session_id, respondent_name, metadata)
+        VALUES ($1, $2, $3, $4)
         RETURNING id, survey_id, session_id, started_at
       `;
       
       const result = await db.query(query, [
         data.surveyId,
         data.sessionId,
-        data.respondentName
+        data.respondentName,
+        JSON.stringify(data.metadata || {})
       ]);
       
       logger.info(`Created new survey response: ${result.rows[0].id}`);
@@ -47,7 +49,8 @@ class SurveyService {
           id: `mock-${data.sessionId}`,
           survey_id: data.surveyId,
           session_id: data.sessionId,
-          started_at: new Date()
+          started_at: new Date(),
+          metadata: data.metadata || {}
         };
         this.mockResponses.set(mockResponse.id, mockResponse);
         this.mockAnswers.set(mockResponse.id, []);

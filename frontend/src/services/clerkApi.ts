@@ -39,20 +39,25 @@ clerkApi.interceptors.request.use(async (config) => {
 // Admin API endpoints using Clerk auth
 export const clerkAdminApi = {
   // Response management
-  getResponses: (page = 1, limit = 10, opts?: { status?: string; tests?: 'exclude'|'include'|'only' }) => {
+  getResponses: (page = 1, limit = 10, opts?: { status?: string; tests?: 'exclude'|'include'|'only'; cohort?: string }) => {
     const params = new URLSearchParams();
     params.set('page', String(page));
     params.set('limit', String(limit));
     if (opts?.status && opts.status !== 'all') params.set('status', opts.status);
     if (opts?.tests) params.set('tests', opts.tests);
+    if (opts?.cohort) params.set('cohort', opts.cohort);
     return clerkApi.get(`/api/clerk-admin/responses?${params.toString()}`);
   },
   
   getResponseDetail: (responseId: string) => 
     clerkApi.get(`/api/clerk-admin/responses/${responseId}`),
   
-  exportResponses: (surveyId: string) => 
-    clerkApi.get(`/api/clerk-admin/export?surveyId=${surveyId}`, { responseType: 'blob' }),
+  exportResponses: (surveyId: string, opts?: { cohort?: string }) => {
+    const params = new URLSearchParams();
+    params.set('surveyId', surveyId);
+    if (opts?.cohort) params.set('cohort', opts.cohort);
+    return clerkApi.get(`/api/clerk-admin/export?${params.toString()}`, { responseType: 'blob' });
+  },
 
   markResponseTest: (responseId: string, isTest: boolean) => 
     clerkApi.patch(`/api/clerk-admin/responses/${responseId}/test`, { isTest }),

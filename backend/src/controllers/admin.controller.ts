@@ -151,6 +151,7 @@ class AdminController {
   async getResponses(req: Request, res: Response, next: NextFunction) {
     try {
       const { page = 1, limit = 20, surveyId, status, tests } = req.query;
+      const cohort = (req.query as any).cohort as string | undefined;
       const offset = (Number(page) - 1) * Number(limit);
       const db = getDb();
       
@@ -217,6 +218,7 @@ class AdminController {
           COALESCE(name_answer.answer_text, r.respondent_name) as respondent_name,
           r.started_at,
           r.completed_at,
+          r.metadata->>'cohort' as cohort,
           s.name as survey_name,
           (r.metadata->>'is_test')::boolean as is_test,
           COUNT(DISTINCT CASE 
@@ -265,6 +267,11 @@ class AdminController {
         query += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
       }
 
+      if (cohort) {
+        params.push(cohort);
+        query += ` AND r.metadata->>'cohort' = $${++paramCount}`;
+      }
+
       query += `
         GROUP BY r.id, s.name, name_answer.answer_text
         ORDER BY r.started_at DESC
@@ -281,9 +288,11 @@ class AdminController {
         FROM responses r
         WHERE 1=1
       `;
-
+      const countParams: any[] = [];
+      let countParamCount = 0;
       if (surveyId) {
-        countQuery += ` AND r.survey_id = $1`;
+        countParams.push(surveyId);
+        countQuery += ` AND r.survey_id = $${++countParamCount}`;
       }
       if (status === 'completed') {
         countQuery += ` AND r.completed_at IS NOT NULL`;
@@ -297,8 +306,12 @@ class AdminController {
       } else {
         countQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
       }
+      if (cohort) {
+        countParams.push(cohort);
+        countQuery += ` AND r.metadata->>'cohort' = $${++countParamCount}`;
+      }
 
-      const countResult = await db.query(countQuery, surveyId ? [surveyId] : []);
+      const countResult = await db.query(countQuery, countParams);
       const total = parseInt(countResult.rows[0].total);
 
       res.json({
@@ -510,7 +523,7 @@ class AdminController {
       return res.status(503).send('Database not connected');
     }
 
-    const { surveyId, tests } = req.query as any;
+    const { surveyId, tests, cohort } = req.query as any;
     if (!surveyId) {
       return res.status(400).send('surveyId is required');
     }
@@ -525,6 +538,7 @@ class AdminController {
           COALESCE(name_answer.answer_text, r.respondent_name) as respondent_name,
           r.started_at,
           r.completed_at,
+          r.metadata->>'cohort' as cohort,
           a.metadata->>'blockId' as question_id,
           a.answer_text,
           a.answer_choice_ids,
@@ -536,6 +550,8 @@ class AdminController {
           AND name_answer.metadata->>'blockId' = 'b3'
         WHERE r.survey_id = $1
       `;
+      const params: any[] = [surveyId];
+      let paramCount = 1;
       if (tests === 'only') {
         query += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS TRUE`;
       } else if (tests === 'include') {
@@ -544,9 +560,13 @@ class AdminController {
         // default exclude
         query += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
       }
+      if (cohort) {
+        params.push(cohort);
+        query += ` AND r.metadata->>'cohort' = $${++paramCount}`;
+      }
       query += ` ORDER BY r.started_at, a.answered_at`;
 
-      const { rows } = await db.query(query, [surveyId]);
+      const { rows } = await db.query(query, params);
 
       if (rows.length === 0) {
         return res.status(404).send('No responses found for this survey.');
@@ -601,7 +621,7 @@ class AdminController {
       }
 
       const sortedQuestionIds = questionOrder.filter(id => allQuestionIds.has(id));
-      const headers = ['response_id', 'respondent_name', 'started_at', 'completed_at', ...sortedQuestionIds.map(id => questionTextMap.get(id) || id)];
+      const headers = ['response_id', 'respondent_name', 'started_at', 'completed_at', 'cohort', ...sortedQuestionIds.map(id => questionTextMap.get(id) || id)];
       
       const data = Array.from(responses.values()).map(response => {
         const row = {
@@ -609,11 +629,18 @@ class AdminController {
           respondent_name: response.respondent_name,
           started_at: response.started_at,
           completed_at: response.completed_at,
+          cohort: '',
         };
         for (const qid of sortedQuestionIds) {
           row[questionTextMap.get(qid) || qid] = response[qid] || '';
         }
         return row;
+      });
+
+      // fill cohort values from the source rows
+      rows.forEach(r => {
+        const target = data.find(d => d.response_id === r.response_id);
+        if (target && !target.cohort) target.cohort = r.cohort || '';
       });
 
       res.setHeader('Content-Type', 'text/csv');
