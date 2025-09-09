@@ -822,9 +822,16 @@ class AdminController {
         } else if (question.options && question.options.length > 0) {
           question.options.forEach(option => {
             const optionData = option as any;
-            const value = optionData.value !== undefined ? String(optionData.value) : String(optionData.id);
+            const rawValue = optionData.value !== undefined ? optionData.value : optionData.id;
+            const value = String(rawValue);
             const label = optionData.label || value;
-            const cnt = distribution[value] || 0;
+            // Some questions (e.g., yes-no) persist answer_text as 'Yes'/'No' while option values are boolean true/false
+            const yesNoAlias = typeof rawValue === 'boolean' ? (rawValue ? 'Yes' : 'No') : undefined;
+            const cnt =
+              (yesNoAlias && distribution[yesNoAlias]) ||
+              distribution[value] ||
+              distribution[label] ||
+              0;
             answerDistribution[label] = {
               count: cnt,
               percentage: totalResponses > 0 ? Math.round((cnt / totalResponses) * 100) : 0

@@ -3,14 +3,13 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useClerk, useUser, useAuth } from '@clerk/clerk-react';
 import { setClerkGetToken } from '../services/clerkApi';
-import { clerkAdminApi } from '../services/clerkApi';
 import AdminOverview from '../components/Admin/AdminOverview';
-import ResponsesList from '../components/Admin/ResponsesList';
-import ResponseDetail from '../components/Admin/ResponseDetail';
-import Analytics from '../components/Admin/Analytics';
+// Temporarily hidden pages; keep imports commented for easy re-enable
+// import ResponsesList from '../components/Admin/ResponsesList';
+// import ResponseDetail from '../components/Admin/ResponseDetail';
+// import Analytics from '../components/Admin/Analytics';
 import ghacLogo from '../assets/images/GHAC.jpg';
-import { IconChartLine, IconList, IconActivity, IconLogOut, IconFileDown } from '../components/Admin/ui/icons';
-import { PrimaryButton, SecondaryButton } from '../components/Admin/ui/Buttons';
+import { IconChartLine, IconLogOut } from '../components/Admin/ui/icons';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -28,23 +27,6 @@ const AdminDashboard: React.FC = () => {
     navigate('/admin/sign-in');
   };
 
-  const handleExport = async () => {
-    try {
-      const response = await clerkAdminApi.exportResponses('11111111-1111-1111-1111-111111111111');
-      const url = window.URL.createObjectURL(response.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ghac-survey-export-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export data. Please try again.');
-    }
-  };
-
   return (
     <Container>
       <Sidebar>
@@ -57,14 +39,6 @@ const AdminDashboard: React.FC = () => {
           <NavItem to="/admin/dashboard" end>
             <NavIcon><IconChartLine /></NavIcon>
             Overview
-          </NavItem>
-          <NavItem to="/admin/responses">
-            <NavIcon><IconList /></NavIcon>
-            Responses
-          </NavItem>
-          <NavItem to="/admin/analytics">
-            <NavIcon><IconActivity /></NavIcon>
-            Analytics
           </NavItem>
         </Navigation>
 
@@ -86,21 +60,10 @@ const AdminDashboard: React.FC = () => {
             <HeaderLogo src={ghacLogo} alt="GHAC" />
             <HeaderTitle>GHAC Admin</HeaderTitle>
           </HeaderBrand>
-          <HeaderActions>
-            <SecondaryButton onClick={() => navigate('/admin/analytics')} aria-label="Go to Analytics">
-              <IconActivity /> Analytics
-            </SecondaryButton>
-            <PrimaryButton onClick={handleExport} aria-label="Export CSV">
-              <IconFileDown /> Export CSV
-            </PrimaryButton>
-          </HeaderActions>
         </MainHeader>
 
         <Routes>
           <Route path="dashboard" element={<AdminOverview />} />
-          <Route path="responses" element={<ResponsesList />} />
-          <Route path="responses/:responseId" element={<ResponseDetail />} />
-          <Route path="analytics" element={<Analytics />} />
           <Route path="*" element={<AdminOverview />} />
         </Routes>
       </MainContent>
@@ -269,10 +232,6 @@ const HeaderTitle = styled.h1`
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
 `;
 
-const HeaderActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.md};
-`;
+// HeaderActions temporarily hidden (export/analytics buttons removed)
 
 export default AdminDashboard;
