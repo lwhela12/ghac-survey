@@ -8,6 +8,21 @@ import { logger } from '../utils/logger';
 import { format } from 'fast-csv';
 import surveyStructure from '../database/survey-structure.json';
 
+// Helper: Remove Handlebars-style template tokens from content used in admin UI
+function sanitizeQuestionText(input: string): string {
+  if (!input) return '';
+  let s = input;
+  // Remove conditional blocks like {{#if var}} ... {{/if}}
+  s = s.replace(/{{#if[^}]*}}[\s\S]*?{{\/if}}/g, '');
+  // Remove any remaining handlebars expressions like {{user_name}} or {{else}}
+  s = s.replace(/{{[^}]+}}/g, '');
+  // Collapse multiple spaces
+  s = s.replace(/\s{2,}/g, ' ');
+  // Remove space before punctuation
+  s = s.replace(/\s+([,.!?;:])/g, '$1');
+  return s.trim();
+}
+
 class AdminController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
@@ -579,6 +594,22 @@ class AdminController {
           return row.answer_choice_ids.join('; ');
         }
         if (row.metadata && typeof row.metadata === 'object') {
+          if (row.question_id === 'b16a-contact') {
+            const m = row.metadata || {};
+            const parts: string[] = [];
+            const first = m.firstName || m.first_name;
+            const last = m.lastName || m.last_name;
+            const fullName = [first, last].filter(Boolean).join(' ').trim();
+            if (fullName) parts.push(`Name: ${fullName}`);
+            if (m.email) parts.push(`Email: ${m.email}`);
+            if (m.phone) parts.push(`Phone: ${m.phone}`);
+            const address = [m.address1, m.address2].filter(Boolean).join(', ');
+            const citystatezip = [m.city, m.state, m.zip].filter(Boolean).join(', ');
+            if (address) parts.push(`Address: ${address}`);
+            if (citystatezip) parts.push(`Location: ${citystatezip}`);
+            if (m.type === 'skipped') return 'Contact form skipped';
+            return parts.join(' | ');
+          }
           if (row.question_id === 'b9') {
             const scales = ['traditional_innovative', 'corporate_community', 'transactional_relationship', 'behind_visible', 'exclusive_inclusive'];
             return scales.map(scale => `${scale.replace(/_/g, '-')}: ${row.metadata[scale] || 'N/A'}`).join('; ');
@@ -667,13 +698,14 @@ class AdminController {
       const questions = Object.entries(surveyStructure.blocks)
         .filter(([, block]) => {
           const b = block as any;
-          return ['single-choice', 'multi-choice', 'yes-no', 'quick-reply', 'scale'].includes(b.type);
+          return ['single-choice', 'multi-choice', 'yes-no', 'quick-reply', 'scale', 'ranking', 'mixed-media', 'semantic-differential'].includes(b.type);
         })
         .map(([blockId, block]) => {
           const b = block as any;
+          const raw = typeof b.content === 'string' ? b.content : b.content?.default || b.content?.['non-supporter'] || '';
           return {
             id: blockId,
-            text: typeof b.content === 'string' ? b.content : b.content?.default || b.content?.['non-supporter'] || '',
+            text: sanitizeQuestionText(raw),
             type: b.type,
             options: b.options || []
           };
@@ -690,6 +722,7 @@ class AdminController {
           a.metadata->>'blockId' as "questionId",
           a.answer_text,
           a.answer_choice_ids,
+          a.metadata->>'type' as answer_type,
           COUNT(*) as count
         FROM answers a
         JOIN responses r ON r.id = a.response_id
@@ -702,7 +735,7 @@ class AdminController {
       } else {
         statsQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
       }
-      statsQuery += ` GROUP BY a.metadata->>'blockId', a.answer_text, a.answer_choice_ids`;
+      statsQuery += ` GROUP BY a.metadata->>'blockId', a.answer_text, a.answer_choice_ids, a.metadata->>'type'`;
 
       const result = await db.query(statsQuery, [questionIds]);
       
@@ -715,54 +748,132 @@ class AdminController {
         return acc;
       }, {});
 
-      const questionStats = questions.map(question => {
+      const questionStats = await Promise.all(questions.map(async (question) => {
         const stats = statsByQuestion[question.id] || [];
         if (stats.length === 0) return null;
 
         const totalResponses = stats.reduce((sum, row) => sum + parseInt(row.count, 10), 0);
-        const distribution = {};
+        const distribution: Record<string, number> = {};
 
-        stats.forEach(row => {
+        stats.forEach((row: any) => {
           const count = parseInt(row.count, 10);
-          if (row.answer_choice_ids && row.answer_choice_ids.length > 0) {
-            row.answer_choice_ids.forEach(choiceId => {
-              distribution[choiceId] = (distribution[choiceId] || 0) + count;
+          if (question.type === 'mixed-media') {
+            const t = row.answer_type || 'unknown';
+            distribution[t] = (distribution[t] || 0) + count;
+          } else if (row.answer_choice_ids && row.answer_choice_ids.length > 0) {
+            (row.answer_choice_ids as string[]).forEach((choiceId: string) => {
+              const key = String(choiceId);
+              distribution[key] = (distribution[key] || 0) + count;
             });
           } else if (row.answer_text) {
             distribution[row.answer_text] = (distribution[row.answer_text] || 0) + count;
           }
         });
 
-        const answerDistribution = {};
-        if (question.options && question.options.length > 0) {
+        const answerDistribution: Record<string, { count: number; percentage: number }> = {};
+        if (question.type === 'mixed-media') {
+          const keys = ['video', 'audio', 'text', 'skip'];
+          keys.forEach(k => {
+            const cnt = distribution[k] || 0;
+            answerDistribution[k] = {
+              count: cnt,
+              percentage: totalResponses > 0 ? Math.round((cnt / totalResponses) * 100) : 0
+            };
+          });
+        } else if (question.type === 'ranking') {
+          // Compute position-weighted scores for ranking question.
+          // Weight scheme: position 1 = N, 2 = N-1, ..., where N = length of that response's list.
+          const scoreByChoice: Record<string, number> = {};
+          let totalPossiblePoints = 0;
+          stats.forEach((row: any) => {
+            const count = parseInt(row.count, 10);
+            const arr: string[] = Array.isArray(row.answer_choice_ids) ? row.answer_choice_ids : [];
+            const n = arr.length;
+            if (n === 0 || count === 0) return;
+            // Sum of weights 1..n = n*(n+1)/2
+            totalPossiblePoints += (n * (n + 1)) / 2 * count;
+            arr.forEach((choiceId: string, idx: number) => {
+              const weight = n - idx; // top gets highest
+              const key = String(choiceId);
+              scoreByChoice[key] = (scoreByChoice[key] || 0) + weight * count;
+            });
+          });
+
+          if (question.options && question.options.length > 0) {
+            question.options.forEach(option => {
+              const optionData = option as any;
+              const value = optionData.value !== undefined ? String(optionData.value) : String(optionData.id);
+              const label = optionData.label || value;
+              const score = Math.round(scoreByChoice[value] || 0);
+              const pct = totalPossiblePoints > 0 ? Math.round((scoreByChoice[value] || 0) * 100 / totalPossiblePoints) : 0;
+              answerDistribution[label] = {
+                count: score,
+                percentage: pct
+              };
+            });
+          } else {
+            Object.entries(scoreByChoice).forEach(([value, score]) => {
+              answerDistribution[value] = {
+                count: Math.round(score as number),
+                percentage: totalPossiblePoints > 0 ? Math.round((score as number) * 100 / totalPossiblePoints) : 0
+              };
+            });
+          }
+        } else if (question.options && question.options.length > 0) {
           question.options.forEach(option => {
             const optionData = option as any;
             const value = optionData.value !== undefined ? String(optionData.value) : String(optionData.id);
-            const count = distribution[value] || 0;
-            answerDistribution[optionData.label] = {
-              count,
-              percentage: totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0
+            const label = optionData.label || value;
+            const cnt = distribution[value] || 0;
+            answerDistribution[label] = {
+              count: cnt,
+              percentage: totalResponses > 0 ? Math.round((cnt / totalResponses) * 100) : 0
             };
           });
         } else {
-          Object.entries(distribution).forEach(([answer, count]) => {
+          Object.entries(distribution).forEach(([answer, cnt]) => {
             answerDistribution[answer] = {
-              count: count as number,
-              percentage: totalResponses > 0 ? Math.round(((count as number) / totalResponses) * 100) : 0
+              count: cnt as number,
+              percentage: totalResponses > 0 ? Math.round(((cnt as number) / totalResponses) * 100) : 0
             };
           });
         }
 
-        return {
+        const base: any = {
           questionId: question.id,
           questionText: question.text,
           questionType: question.type,
           totalResponses,
           answerDistribution
         };
-      }).filter(q => q !== null);
-      
-      res.json({ questionStats });
+        // Provide semantic averages for b9
+        if (question.type === 'semantic-differential') {
+          const avgQuery = `
+            SELECT 
+              AVG((a.metadata->>'traditional_innovative')::numeric) as traditional_innovative,
+              AVG((a.metadata->>'corporate_community')::numeric) as corporate_community,
+              AVG((a.metadata->>'transactional_relationship')::numeric) as transactional_relationship,
+              AVG((a.metadata->>'behind_visible')::numeric) as behind_visible,
+              AVG((a.metadata->>'exclusive_inclusive')::numeric) as exclusive_inclusive
+            FROM answers a
+            JOIN responses r ON r.id = a.response_id
+            WHERE a.metadata->>'blockId' = 'b9'
+          `;
+          const avgRes = await db.query(avgQuery);
+          const row = avgRes.rows[0] || {};
+          base.semanticSummary = {
+            traditional_innovative: parseFloat(row.traditional_innovative || 0),
+            corporate_community: parseFloat(row.corporate_community || 0),
+            transactional_relationship: parseFloat(row.transactional_relationship || 0),
+            behind_visible: parseFloat(row.behind_visible || 0),
+            exclusive_inclusive: parseFloat(row.exclusive_inclusive || 0)
+          };
+        }
+
+        return base;
+      }));
+
+      res.json({ questionStats: questionStats.filter(Boolean) });
     } catch (error) {
       console.error('Error getting question stats:', error);
       next(error);
@@ -779,27 +890,34 @@ class AdminController {
         const mockAnalytics = {
           totalResponses: 25,
           completedResponses: 20,
-          avgCompletionTime: 8.5
+          avgCompletionTime: 8.5,
+          demographicsOptInCount: 12,
+          demographicsOptInRate: 0.6,
+          avgDonation: 250
         };
         
         return res.json(mockAnalytics);
       }
 
-      let summaryQuery = `
+      // Build tests filter clause
+      let testsClause = '';
+      if (tests === 'only') {
+        testsClause = ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS TRUE`;
+      } else if (tests === 'include') {
+        // include both - no clause
+      } else {
+        testsClause = ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
+      }
+
+      const summaryQuery = `
         SELECT 
           COUNT(DISTINCT r.id) as total_responses,
           COUNT(DISTINCT CASE WHEN r.completed_at IS NOT NULL THEN r.id END) as completed_responses,
           AVG(EXTRACT(EPOCH FROM (r.completed_at - r.started_at))/60)::numeric(10,2) as avg_completion_time_minutes
         FROM responses r
         WHERE r.survey_id = $1
+          ${testsClause}
       `;
-      if (tests === 'only') {
-        summaryQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS TRUE`;
-      } else if (tests === 'include') {
-        // no-op include
-      } else {
-        summaryQuery += ` AND COALESCE((r.metadata->>'is_test')::boolean, FALSE) IS FALSE`;
-      }
 
       const result = await db.query(summaryQuery, [surveyId]);
       
@@ -808,14 +926,126 @@ class AdminController {
         return res.json({
           totalResponses: 0,
           completedResponses: 0,
-          avgCompletionTime: 0
+          avgCompletionTime: 0,
+          demographicsOptInCount: 0,
+          demographicsOptInRate: 0,
+          avgDonation: 0
         });
       }
 
+      let totalResponses = parseInt(data.total_responses) || 0;
+      let completedResponses = parseInt(data.completed_responses) || 0;
+      let avgCompletionTime = parseFloat(data.avg_completion_time_minutes) || 0;
+
+      // If filtered by surveyId returns zero (common in dev when surveyId differs),
+      // fall back to all responses with the same tests filter to avoid blank dashboard.
+      if (totalResponses === 0 && completedResponses === 0) {
+        const fallbackSummary = await db.query(
+          `SELECT 
+            COUNT(DISTINCT r.id) as total_responses,
+            COUNT(DISTINCT CASE WHEN r.completed_at IS NOT NULL THEN r.id END) as completed_responses,
+            AVG(EXTRACT(EPOCH FROM (r.completed_at - r.started_at))/60)::numeric(10,2) as avg_completion_time_minutes
+           FROM responses r
+           WHERE 1=1 ${testsClause}`
+        );
+        const fb = fallbackSummary.rows[0];
+        if (fb) {
+          totalResponses = parseInt(fb.total_responses) || 0;
+          completedResponses = parseInt(fb.completed_responses) || 0;
+          avgCompletionTime = parseFloat(fb.avg_completion_time_minutes) || 0;
+        }
+      }
+
+      // Demographics opt-in (b18 Yes)
+      const demoQuery = `
+        SELECT COUNT(*)::int as opt_in
+        FROM answers a
+        JOIN responses r ON r.id = a.response_id
+        WHERE r.survey_id = $1
+          ${testsClause}
+          AND a.metadata->>'blockId' = 'b18'
+          AND LOWER(COALESCE(a.answer_text, '')) IN ('yes','true')
+      `;
+      const demoRes = await db.query(demoQuery, [surveyId]);
+      let demographicsOptInCount = (demoRes.rows[0] && demoRes.rows[0].opt_in) ? parseInt(demoRes.rows[0].opt_in, 10) : 0;
+      if (totalResponses > 0 && demographicsOptInCount === 0) {
+        // Fallback without survey filter
+        const fbDemo = await db.query(
+          `SELECT COUNT(*)::int as opt_in
+           FROM answers a
+           JOIN responses r ON r.id = a.response_id
+           WHERE 1=1 ${testsClause}
+             AND a.metadata->>'blockId' = 'b18'
+             AND LOWER(COALESCE(a.answer_text, '')) IN ('yes','true')`
+        );
+        demographicsOptInCount = (fbDemo.rows[0] && fbDemo.rows[0].opt_in) ? parseInt(fbDemo.rows[0].opt_in, 10) : 0;
+      }
+      const demographicsOptInRate = completedResponses > 0 ? demographicsOptInCount / completedResponses : 0;
+
+      // Average donation from giving level (b19.4). Values are stored as answer_text tokens
+      // like 'under-100', '100-249', '5000-plus', or 'prefer-not'.
+      const donationQuery = `
+        SELECT COALESCE(a.answer_text, a.answer_choice_ids[1]) as giving_choice
+        FROM answers a
+        JOIN responses r ON r.id = a.response_id
+        WHERE r.survey_id = $1
+          ${testsClause}
+          AND a.metadata->>'blockId' = 'b19.4'
+      `;
+      const donationRes = await db.query(donationQuery, [surveyId]);
+      const parseDonation = (s: string | null): number | null => {
+        if (!s) return null;
+        const t = s.toLowerCase();
+        if (t.includes('prefer-not')) return null;
+        if (t.includes('under')) {
+          // 'under-100' -> use midpoint 50
+          const num = parseInt(t.replace(/[^0-9]/g, ''), 10);
+          return isNaN(num) ? 50 : Math.max(1, Math.round(num / 2));
+        }
+        if (t.includes('plus')) {
+          // '5000-plus' -> use lower bound
+          const num = parseInt(t.replace(/[^0-9]/g, ''), 10);
+          return isNaN(num) ? null : num;
+        }
+        const m = t.match(/([0-9][0-9,]*)-([0-9][0-9,]*)/);
+        if (m) {
+          const low = parseInt(m[1].replace(/,/g, ''), 10);
+          const high = parseInt(m[2].replace(/,/g, ''), 10);
+          if (!isNaN(low) && !isNaN(high)) return Math.round((low + high) / 2);
+        }
+        // Fallback: try to parse any number present
+        const any = parseInt(t.replace(/[^0-9]/g, ''), 10);
+        return isNaN(any) ? null : any;
+      };
+      let sum = 0; let cnt = 0;
+      donationRes.rows.forEach((r: any) => {
+        const val = parseDonation(r.giving_choice);
+        if (val !== null && isFinite(val)) { sum += val; cnt += 1; }
+      });
+      if (cnt === 0) {
+        // Fallback without survey filter
+        const fbDonation = await db.query(
+          `SELECT COALESCE(a.answer_text, a.answer_choice_ids[1]) as giving_choice
+           FROM answers a
+           JOIN responses r ON r.id = a.response_id
+           WHERE 1=1 ${testsClause}
+             AND a.metadata->>'blockId' = 'b19.4'`
+        );
+        sum = 0; cnt = 0;
+        fbDonation.rows.forEach((r: any) => {
+          const val = parseDonation(r.giving_choice);
+          if (val !== null && isFinite(val)) { sum += val; cnt += 1; }
+        });
+      }
+      const avgDonation = cnt > 0 ? Math.round(sum / cnt) : 0;
+
       res.json({
-        totalResponses: parseInt(data.total_responses) || 0,
-        completedResponses: parseInt(data.completed_responses) || 0,
-        avgCompletionTime: parseFloat(data.avg_completion_time_minutes) || 0
+        totalResponses,
+        completedResponses,
+        avgCompletionTime,
+        demographicsOptInCount,
+        demographicsOptInRate,
+        avgDonation
       });
     } catch (error) {
       next(error);

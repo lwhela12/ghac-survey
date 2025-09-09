@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { Table as AdminTable, THead, TBody, TR } from './ui/Table';
+import { PrimaryButton } from './ui/Buttons';
+import { IconFileDown, IconTrash } from './ui/icons';
 import { clerkAdminApi } from '../../services/clerkApi';
+import { Badge } from './ui/Badge';
 
 interface Response {
   id: string;
@@ -61,8 +65,8 @@ const ResponsesList: React.FC = () => {
     return response.completed_at ? 'Completed' : 'In Progress';
   };
 
-  const getStatusColor = (response: Response) => {
-    return response.completed_at ? '#22c55e' : '#f59e0b';
+  const getStatusVariant = (response: Response): 'success' | 'warning' => {
+    return response.completed_at ? 'success' : 'warning';
   };
 
   return (
@@ -124,7 +128,7 @@ const ResponsesList: React.FC = () => {
               }
             }}
           >
-            💾 Export CSV
+            <IconFileDown /> Export CSV
           </ExportButton>
           <DangerButton
             onClick={async () => {
@@ -138,7 +142,7 @@ const ResponsesList: React.FC = () => {
               }
             }}
           >
-            🗑 Delete Test
+            <IconTrash /> Delete Test
           </DangerButton>
           {/* Removed Delete ALL for safety */}
         </Controls>
@@ -171,16 +175,15 @@ const ResponsesList: React.FC = () => {
             <TableBody>
               {responses.map((response) => (
                 <TableRow key={response.id} onClick={() => navigate(`/admin/responses/${response.id}`)}>
-                  <td>
-                    <RespondentName>
-                      {response.respondent_name || 'Anonymous'} {response.is_test ? <TestBadge>TEST</TestBadge> : null}
-                    </RespondentName>
-                  </td>
+                <td>
+                  <RespondentName>
+                    {response.respondent_name || 'Anonymous'}{' '}
+                    {response.is_test ? <Badge variant="warning">TEST</Badge> : null}
+                  </RespondentName>
+                </td>
                   <td>{formatDate(response.started_at)}</td>
                   <td>
-                    <StatusBadge color={getStatusColor(response)}>
-                      {getStatus(response)}
-                    </StatusBadge>
+                    <Badge variant={getStatusVariant(response)}>{getStatus(response)}</Badge>
                   </td>
                   <td>{response.cohort || '-'}</td>
                   <td>{response.answer_count}</td>
@@ -253,7 +256,6 @@ const Title = styled.h1`
   color: ${({ theme }) => theme.colors.text.primary};
   font-size: ${({ theme }) => theme.fontSizes['2xl']};
   margin: 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const Controls = styled.div`
@@ -266,12 +268,11 @@ const CohortInput = styled.input`
   border: 2px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: ${({ theme }) => theme.fontSizes.base};
-  font-family: 'Nunito', sans-serif;
   width: 160px;
   
   &:focus {
     outline: none;
-    border-color: #4A90E2;
+    border-color: ${({ theme }) => theme.colors.primary};
   }
 `;
 
@@ -280,34 +281,16 @@ const FilterSelect = styled.select`
   border: 2px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: ${({ theme }) => theme.fontSizes.base};
-  font-family: 'Nunito', sans-serif;
   cursor: pointer;
   
   &:focus {
     outline: none;
-    border-color: #4A90E2;
+    border-color: ${({ theme }) => theme.colors.primary};
   }
 `;
 
-const ExportButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
-  background: #4A90E2;
-  color: white;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+const ExportButton = styled(PrimaryButton)`
   font-size: ${({ theme }) => theme.fontSizes.base};
-  font-family: 'Nunito', sans-serif;
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.fast};
-  
-  &:hover {
-    background: #357ABD;
-    transform: translateY(-1px);
-  }
 `;
 
 const DangerButton = styled(ExportButton)`
@@ -331,14 +314,7 @@ const DangerSmall = styled.button`
   &:hover { background: #dc2626; }
 `;
 
-const TestBadge = styled.span`
-  margin-left: 6px;
-  background: #fde68a;
-  color: #92400e;
-  border-radius: 6px;
-  padding: 2px 6px;
-  font-size: 12px;
-`;
+// replaced by <Badge variant="warning" />
 
 const LoadingContainer = styled.div`
   display: flex;
@@ -352,7 +328,7 @@ const LoadingSpinner = styled.div`
   width: 48px;
   height: 48px;
   border: 3px solid ${({ theme }) => theme.colors.border};
-  border-top-color: #4A90E2;
+  border-top-color: ${({ theme }) => theme.colors.primary};
   border-radius: 50%;
   animation: spin 1s linear infinite;
   
@@ -364,7 +340,6 @@ const LoadingSpinner = styled.div`
 const LoadingText = styled.p`
   margin-top: ${({ theme }) => theme.spacing.md};
   color: ${({ theme }) => theme.colors.text.secondary};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const EmptyState = styled.div`
@@ -381,89 +356,42 @@ const EmptyText = styled.h3`
   color: ${({ theme }) => theme.colors.text.primary};
   font-size: ${({ theme }) => theme.fontSizes.xl};
   margin: 0 0 ${({ theme }) => theme.spacing.sm} 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const EmptySubtext = styled.p`
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: ${({ theme }) => theme.fontSizes.base};
   margin: 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
-const ResponseTable = styled.table`
-  width: 100%;
-  background: ${({ theme }) => theme.colors.background};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  overflow: hidden;
-  box-shadow: ${({ theme }) => theme.shadows.sm};
-`;
+const ResponseTable = AdminTable;
 
-const TableHeader = styled.thead`
-  background: rgba(74, 144, 226, 0.05);
-  
-  th {
-    padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
-    text-align: left;
-    font-family: 'Nunito', sans-serif;
-    font-weight: ${({ theme }) => theme.fontWeights.semibold};
-    color: ${({ theme }) => theme.colors.text.primary};
-    font-size: ${({ theme }) => theme.fontSizes.sm};
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-`;
+const TableHeader = THead;
 
-const TableBody = styled.tbody``;
+const TableBody = TBody;
 
-const TableRow = styled.tr`
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+const TableRow = styled(TR)`
   cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.fast};
-  
-  &:hover {
-    background: rgba(74, 144, 226, 0.03);
-  }
-  
-  &:last-child {
-    border-bottom: none;
-  }
-  
-  td {
-    padding: ${({ theme }) => theme.spacing.lg};
-    font-family: 'Nunito', sans-serif;
-    color: ${({ theme }) => theme.colors.text.primary};
-  }
 `;
 
 const RespondentName = styled.div`
   font-weight: ${({ theme }) => theme.fontWeights.medium};
 `;
 
-const StatusBadge = styled.span<{ color: string }>`
-  display: inline-flex;
-  align-items: center;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
-  background: ${({ color }) => `${color}20`};
-  color: ${({ color }) => color};
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
-`;
+// Status badge now uses <Badge variant="success|warning" />
 
 const ViewButton = styled.button`
   background: transparent;
-  border: 1px solid #4A90E2;
-  color: #4A90E2;
+  border: 1px solid ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.primary};
   padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: ${({ theme }) => theme.fontSizes.sm};
-  font-family: 'Nunito', sans-serif;
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
   
   &:hover {
-    background: #4A90E2;
+    background: ${({ theme }) => theme.colors.primary};
     color: white;
   }
 `;
@@ -478,18 +406,17 @@ const Pagination = styled.div`
 
 const PageButton = styled.button`
   padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
-  background: ${({ theme }) => theme.colors.background};
+  background: ${({ theme }) => theme.colors.surface};
   border: 2px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   color: ${({ theme }) => theme.colors.text.primary};
-  font-family: 'Nunito', sans-serif;
   font-weight: ${({ theme }) => theme.fontWeights.medium};
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
   
   &:hover:not(:disabled) {
-    border-color: #4A90E2;
-    color: #4A90E2;
+    border-color: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.primary};
   }
   
   &:disabled {
@@ -500,7 +427,6 @@ const PageButton = styled.button`
 
 const PageInfo = styled.span`
   color: ${({ theme }) => theme.colors.text.secondary};
-  font-family: 'Nunito', sans-serif;
 `;
 
 export default ResponsesList;

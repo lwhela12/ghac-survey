@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
+import { Card } from './ui/Card';
+import { PrimaryButton } from './ui/Buttons';
+import { IconFileDown, IconBarChart } from './ui/icons';
+import { IconCheckCircle, IconClock, IconActivity } from './ui/icons';
 import { clerkAdminApi } from '../../services/clerkApi';
 
 interface QuestionStats {
@@ -90,13 +94,13 @@ const Analytics: React.FC = () => {
             alert('Failed to export data. Please try again.');
           }
         }}>
-          💾 Export Raw Data
+          <IconFileDown /> Export Raw Data
         </ExportButton>
       </Header>
 
       <MetricsGrid>
-        <MetricCard $highlight>
-          <MetricIcon>📊</MetricIcon>
+        <MetricCard>
+          <MetricIcon><IconBarChart /></MetricIcon>
           <MetricContent>
             <MetricValue>{stats.totalResponses}</MetricValue>
             <MetricLabel>Total Responses</MetricLabel>
@@ -104,7 +108,7 @@ const Analytics: React.FC = () => {
         </MetricCard>
 
         <MetricCard>
-          <MetricIcon>✅</MetricIcon>
+          <MetricIcon><IconCheckCircle /></MetricIcon>
           <MetricContent>
             <MetricValue>{completionRate}%</MetricValue>
             <MetricLabel>Completion Rate</MetricLabel>
@@ -113,7 +117,7 @@ const Analytics: React.FC = () => {
         </MetricCard>
 
         <MetricCard>
-          <MetricIcon>⏱️</MetricIcon>
+          <MetricIcon><IconClock /></MetricIcon>
           <MetricContent>
             <MetricValue>{stats.avgCompletionTime.toFixed(1)} min</MetricValue>
             <MetricLabel>Avg. Time to Complete</MetricLabel>
@@ -122,7 +126,7 @@ const Analytics: React.FC = () => {
         </MetricCard>
 
         <MetricCard>
-          <MetricIcon>📉</MetricIcon>
+          <MetricIcon><IconActivity /></MetricIcon>
           <MetricContent>
             <MetricValue>{dropoffRate}%</MetricValue>
             <MetricLabel>Drop-off Rate</MetricLabel>
@@ -135,7 +139,7 @@ const Analytics: React.FC = () => {
         <SectionTitle>Question-Level Analysis</SectionTitle>
         {questionStats.length === 0 ? (
           <EmptyState>
-            <EmptyStateIcon>📊</EmptyStateIcon>
+            <EmptyStateIcon><IconBarChart /></EmptyStateIcon>
             <EmptyStateText>No response data available yet.</EmptyStateText>
             <EmptyStateSubtext>Analytics will appear here once surveys are completed.</EmptyStateSubtext>
           </EmptyState>
@@ -162,7 +166,9 @@ const Analytics: React.FC = () => {
                       <DistributionRow key={answer}>
                         <AnswerLabel title={answer}>{answer}</AnswerLabel>
                         <BarContainer>
-                          <Bar width={data.percentage} />
+                          <BarTrack>
+                            <BarFill width={data.percentage} />
+                          </BarTrack>
                           <PercentageContainer>
                             <Percentage>{data.percentage}%</Percentage>
                             <ResponseCount>({data.count})</ResponseCount>
@@ -196,7 +202,7 @@ const LoadingSpinner = styled.div`
   width: 48px;
   height: 48px;
   border: 3px solid ${({ theme }) => theme.colors.border};
-  border-top-color: #4A90E2;
+  border-top-color: ${({ theme }) => theme.colors.primary};
   border-radius: 50%;
   animation: spin 1s linear infinite;
   
@@ -208,7 +214,6 @@ const LoadingSpinner = styled.div`
 const LoadingText = styled.p`
   margin-top: ${({ theme }) => theme.spacing.md};
   color: ${({ theme }) => theme.colors.text.secondary};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const Header = styled.div`
@@ -222,55 +227,31 @@ const Title = styled.h1`
   color: ${({ theme }) => theme.colors.text.primary};
   font-size: ${({ theme }) => theme.fontSizes['2xl']};
   margin: 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
-const ExportButton = styled.button`
+const ExportButton = styled(PrimaryButton)`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.sm};
   padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
-  background: #4A90E2;
-  color: white;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-family: 'Nunito', sans-serif;
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.fast};
-  
-  &:hover {
-    background: #357ABD;
-    transform: translateY(-1px);
-  }
 `;
 
 const MetricsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: ${({ theme }) => theme.spacing.xl};
+  gap: ${({ theme }) => theme.spacing.lg};
   margin-bottom: ${({ theme }) => theme.spacing['3xl']};
 `;
 
-const MetricCard = styled.div<{ $highlight?: boolean }>`
-  background: ${({ theme, $highlight }) => 
-    $highlight ? 'linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)' : theme.colors.background};
-  padding: ${({ theme }) => theme.spacing.xl};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
+const MetricCard = styled(Card)`
+  background: ${({ theme }) => theme.colors.surface};
   box-shadow: ${({ theme }) => theme.shadows.sm};
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.lg};
   transition: all ${({ theme }) => theme.transitions.normal};
-  
-  ${({ $highlight }) => $highlight && `
-    color: white;
-    
-    div {
-      color: white !important;
-    }
-  `}
-  
+  position: relative;
+
   &:hover {
     transform: translateY(-2px);
     box-shadow: ${({ theme }) => theme.shadows.md};
@@ -278,46 +259,42 @@ const MetricCard = styled.div<{ $highlight?: boolean }>`
 `;
 
 const MetricIcon = styled.div`
-  font-size: 48px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.primary};
+  svg { width: 32px; height: 32px; }
 `;
 
 const MetricContent = styled.div``;
 
 const MetricValue = styled.div`
-  font-size: ${({ theme }) => theme.fontSizes['3xl']};
+  font-size: ${({ theme }) => theme.fontSizes['2xl']};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
   margin-bottom: ${({ theme }) => theme.spacing.xs};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const MetricLabel = styled.div`
-  font-size: ${({ theme }) => theme.fontSizes.base};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
   font-weight: ${({ theme }) => theme.fontWeights.medium};
   margin-bottom: ${({ theme }) => theme.spacing.xs};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const MetricSubtext = styled.div`
-  font-size: ${({ theme }) => theme.fontSizes.sm};
+  font-size: ${({ theme }) => theme.fontSizes.xs};
   opacity: 0.8;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const SectionTitle = styled.h2`
   color: ${({ theme }) => theme.colors.text.primary};
-  font-size: ${({ theme }) => theme.fontSizes.xl};
+  font-size: ${({ theme }) => theme.fontSizes.lg};
   margin: 0 0 ${({ theme }) => theme.spacing.lg} 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const QuestionAnalysis = styled.section``;
 
-const QuestionCard = styled.div`
-  background: ${({ theme }) => theme.colors.background};
-  padding: ${({ theme }) => theme.spacing.xl};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  box-shadow: ${({ theme }) => theme.shadows.sm};
+const QuestionCard = styled(Card)`
   margin-bottom: ${({ theme }) => theme.spacing.lg};
 `;
 
@@ -334,13 +311,11 @@ const QuestionText = styled.h3`
   font-weight: ${({ theme }) => theme.fontWeights.medium};
   margin: 0;
   flex: 1;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const ResponseCount = styled.span`
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: ${({ theme }) => theme.fontSizes.sm};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const DistributionChart = styled.div``;
@@ -361,7 +336,6 @@ const AnswerLabel = styled.div`
   max-width: 300px;
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.text.primary};
-  font-family: 'Nunito', sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -376,19 +350,25 @@ const BarContainer = styled.div`
   position: relative;
 `;
 
-const Bar = styled.div<{ width: number }>`
-  height: 28px;
-  background: ${({ width }) => {
-    if (width > 60) return 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)';
-    if (width > 30) return 'linear-gradient(90deg, #4A90E2 0%, #357ABD 100%)';
-    if (width > 10) return 'linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%)';
-    return 'linear-gradient(90deg, #f87171 0%, #ef4444 100%)';
-  }};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+const BarTrack = styled.div`
+  position: relative;
+  flex: 1;
+  height: 12px;
+  background: #EDF2F7; /* neutral light track */
+  border-radius: ${({ theme }) => theme.borderRadius.full};
+  overflow: hidden;
+`;
+
+const BarFill = styled.div<{ width: number }>`
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  /* Single, consistent Nesolagus green gradient */
+  background: linear-gradient(135deg, #64B37A 0%, #2F6D49 100%);
   width: ${({ width }) => `${Math.max(width, 2)}%`};
-  min-width: 2%;
+  border-radius: ${({ theme }) => theme.borderRadius.full};
   transition: width ${({ theme }) => theme.transitions.normal};
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
 const PercentageContainer = styled.div`
@@ -396,26 +376,27 @@ const PercentageContainer = styled.div`
   align-items: center;
   gap: ${({ theme }) => theme.spacing.sm};
   min-width: 80px;
+  color: ${({ theme }) => theme.colors.text.secondary};
 `;
 
 const Percentage = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.text.primary};
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: ${({ theme }) => theme.spacing['3xl']};
-  background: ${({ theme }) => theme.colors.background};
+  background: ${({ theme }) => theme.colors.surface};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   box-shadow: ${({ theme }) => theme.shadows.sm};
 `;
 
 const EmptyStateIcon = styled.div`
-  font-size: 64px;
+  color: ${({ theme }) => theme.colors.text.secondary};
   margin-bottom: ${({ theme }) => theme.spacing.lg};
+  svg { width: 48px; height: 48px; }
 `;
 
 const EmptyStateText = styled.p`
@@ -423,14 +404,12 @@ const EmptyStateText = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.lg};
   font-weight: ${({ theme }) => theme.fontWeights.medium};
   margin: 0 0 ${({ theme }) => theme.spacing.sm} 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const EmptyStateSubtext = styled.p`
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: ${({ theme }) => theme.fontSizes.base};
   margin: 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const QuestionBadge = styled.span<{ type: string }>`
@@ -459,7 +438,6 @@ const QuestionBadge = styled.span<{ type: string }>`
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
   text-transform: uppercase;
   margin-right: ${({ theme }) => theme.spacing.md};
-  font-family: 'Nunito', sans-serif;
 `;
 
 export default Analytics;

@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { Card } from './ui/Card';
+import QuestionBreakdown from './QuestionBreakdown';
+import { IconBarChart, IconCheckCircle, IconPercent, IconClock } from './ui/icons';
 import { clerkAdminApi } from '../../services/clerkApi';
 
 const AdminOverview: React.FC = () => {
-  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalResponses: 0,
     completedResponses: 0,
     avgCompletionTime: 0,
+    demographicsOptInRate: 0,
+    avgDonation: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -25,6 +28,8 @@ const AdminOverview: React.FC = () => {
         totalResponses: data.totalResponses || 0,
         completedResponses: data.completedResponses || 0,
         avgCompletionTime: data.avgCompletionTime || 0,
+        demographicsOptInRate: data.demographicsOptInRate || 0,
+        avgDonation: data.avgDonation || 0,
       });
     } catch (error) {
       console.error('Failed to load analytics:', error);
@@ -35,7 +40,9 @@ const AdminOverview: React.FC = () => {
 
   const completionRate = stats.totalResponses > 0 
     ? ((stats.completedResponses / stats.totalResponses) * 100).toFixed(1)
-    : 0;
+    : '0.0';
+  const demoOptIn = (stats.demographicsOptInRate * 100).toFixed(1);
+  const formatCurrency = (n: number) => n > 0 ? `$${n.toLocaleString('en-US')}` : '—';
 
   return (
     <Container>
@@ -46,23 +53,23 @@ const AdminOverview: React.FC = () => {
 
       <StatsGrid>
         <StatCard>
-          <StatIcon>📊</StatIcon>
+          <StatIcon><IconBarChart size={32} /></StatIcon>
           <StatContent>
             <StatValue>{isLoading ? '...' : stats.totalResponses}</StatValue>
-            <StatLabel>Total Responses</StatLabel>
+            <StatLabel>Starts</StatLabel>
           </StatContent>
         </StatCard>
 
         <StatCard>
-          <StatIcon>✅</StatIcon>
+          <StatIcon><IconCheckCircle size={32} /></StatIcon>
           <StatContent>
             <StatValue>{isLoading ? '...' : stats.completedResponses}</StatValue>
-            <StatLabel>Completed Surveys</StatLabel>
+            <StatLabel>Completes</StatLabel>
           </StatContent>
         </StatCard>
 
         <StatCard>
-          <StatIcon>📈</StatIcon>
+          <StatIcon><IconPercent size={32} /></StatIcon>
           <StatContent>
             <StatValue>{isLoading ? '...' : `${completionRate}%`}</StatValue>
             <StatLabel>Completion Rate</StatLabel>
@@ -70,59 +77,27 @@ const AdminOverview: React.FC = () => {
         </StatCard>
 
         <StatCard>
-          <StatIcon>⏱️</StatIcon>
+          <StatIcon><IconPercent size={32} /></StatIcon>
+          <StatContent>
+            <StatValue>{isLoading ? '...' : `${demoOptIn}%`}</StatValue>
+            <StatLabel>Demographics Opt-in</StatLabel>
+          </StatContent>
+        </StatCard>
+
+        <StatCard>
+          <StatIcon><IconClock size={32} /></StatIcon>
           <StatContent>
             <StatValue>
-              {isLoading ? '...' : `${stats.avgCompletionTime.toFixed(1)} min`}
+              {isLoading ? '...' : formatCurrency(stats.avgDonation)}
             </StatValue>
-            <StatLabel>Avg. Completion Time</StatLabel>
+            <StatLabel>Average Donation</StatLabel>
           </StatContent>
         </StatCard>
       </StatsGrid>
 
-      <ActionsSection>
-        <SectionTitle>Quick Actions</SectionTitle>
-        <ActionsGrid>
-          <ActionButton onClick={() => navigate('/admin/responses')}>
-            <ActionIcon>📝</ActionIcon>
-            <ActionText>
-              <ActionTitle>View Responses</ActionTitle>
-              <ActionDesc>Browse all survey responses</ActionDesc>
-            </ActionText>
-          </ActionButton>
+      {/* Quick Actions removed per request; header now holds actions */}
 
-          <ActionButton onClick={() => navigate('/admin/analytics')}>
-            <ActionIcon>📊</ActionIcon>
-            <ActionText>
-              <ActionTitle>Analytics</ActionTitle>
-              <ActionDesc>Detailed survey analytics</ActionDesc>
-            </ActionText>
-          </ActionButton>
-
-          <ActionButton onClick={async () => {
-            try {
-              const response = await clerkAdminApi.exportResponses('11111111-1111-1111-1111-111111111111');
-              const url = window.URL.createObjectURL(response.data);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `ghac-survey-export-${new Date().toISOString().split('T')[0]}.csv`;
-              document.body.appendChild(a);
-              a.click();
-              window.URL.revokeObjectURL(url);
-              document.body.removeChild(a);
-            } catch (error) {
-              console.error('Export failed:', error);
-              alert('Failed to export data. Please try again.');
-            }
-          }}>
-            <ActionIcon>💾</ActionIcon>
-            <ActionText>
-              <ActionTitle>Export Data</ActionTitle>
-              <ActionDesc>Download responses as CSV</ActionDesc>
-            </ActionText>
-          </ActionButton>
-        </ActionsGrid>
-      </ActionsSection>
+      <QuestionBreakdown />
     </Container>
   );
 };
@@ -138,30 +113,24 @@ const PageHeader = styled.div`
 
 const Title = styled.h1`
   color: ${({ theme }) => theme.colors.text.primary};
-  font-size: ${({ theme }) => theme.fontSizes['3xl']};
+  font-size: ${({ theme }) => theme.fontSizes['2xl']};
   margin: 0 0 ${({ theme }) => theme.spacing.sm} 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const Subtitle = styled.p`
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: ${({ theme }) => theme.fontSizes.lg};
   margin: 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: ${({ theme }) => theme.spacing.xl};
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: ${({ theme }) => theme.spacing.lg};
   margin-bottom: ${({ theme }) => theme.spacing['3xl']};
 `;
 
-const StatCard = styled.div`
-  background: ${({ theme }) => theme.colors.background};
-  padding: ${({ theme }) => theme.spacing.xl};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  box-shadow: ${({ theme }) => theme.shadows.sm};
+const StatCard = styled(Card)`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.lg};
@@ -174,8 +143,11 @@ const StatCard = styled.div`
 `;
 
 const StatIcon = styled.div`
-  font-size: 48px;
   line-height: 1;
+  color: ${({ theme }) => theme.colors.primary};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const StatContent = styled.div``;
@@ -185,74 +157,13 @@ const StatValue = styled.div`
   font-weight: ${({ theme }) => theme.fontWeights.bold};
   color: ${({ theme }) => theme.colors.text.primary};
   margin-bottom: ${({ theme }) => theme.spacing.xs};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const StatLabel = styled.div`
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.text.secondary};
-  font-family: 'Nunito', sans-serif;
 `;
 
-const ActionsSection = styled.section``;
-
-const SectionTitle = styled.h2`
-  color: ${({ theme }) => theme.colors.text.primary};
-  font-size: ${({ theme }) => theme.fontSizes.xl};
-  margin: 0 0 ${({ theme }) => theme.spacing.lg} 0;
-  font-family: 'Nunito', sans-serif;
-`;
-
-const ActionsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: ${({ theme }) => theme.spacing.lg};
-`;
-
-const ActionButton = styled.button`
-  background: ${({ theme }) => theme.colors.background};
-  padding: ${({ theme }) => theme.spacing.lg};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  box-shadow: ${({ theme }) => theme.shadows.sm};
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.md};
-  text-decoration: none;
-  color: inherit;
-  transition: all ${({ theme }) => theme.transitions.normal};
-  border: none;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  border: 2px solid transparent;
-  
-  &:hover {
-    border-color: #4A90E2;
-    transform: translateY(-2px);
-    box-shadow: ${({ theme }) => theme.shadows.md};
-  }
-`;
-
-const ActionIcon = styled.div`
-  font-size: 36px;
-  line-height: 1;
-`;
-
-const ActionText = styled.div``;
-
-const ActionTitle = styled.div`
-  font-size: ${({ theme }) => theme.fontSizes.lg};
-  font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  color: ${({ theme }) => theme.colors.text.primary};
-  margin-bottom: ${({ theme }) => theme.spacing.xs};
-  font-family: 'Nunito', sans-serif;
-`;
-
-const ActionDesc = styled.div`
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  color: ${({ theme }) => theme.colors.text.secondary};
-  font-family: 'Nunito', sans-serif;
-`;
+// Quick Actions styles removed
 
 export default AdminOverview;

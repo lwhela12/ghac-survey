@@ -92,6 +92,26 @@ export const formatComplexAnswer = (answer: any): string => {
     const metadata = answer.metadata;
     const blockId = metadata.blockId;
     
+    // Contact form: render a clear, multi-line summary
+    if (blockId === 'b16a-contact') {
+      const parts: string[] = [];
+      const first = metadata.firstName || metadata.first_name;
+      const last = metadata.lastName || metadata.last_name;
+      const fullName = [first, last].filter(Boolean).join(' ').trim();
+      if (fullName) parts.push(`Name: ${fullName}`);
+      if (metadata.email) parts.push(`Email: ${metadata.email}`);
+      if (metadata.phone) parts.push(`Phone: ${metadata.phone}`);
+      const addressLines = [metadata.address1, metadata.address2]
+        .filter((l: string) => !!l && String(l).trim().length > 0);
+      const cityStateZip = [metadata.city, metadata.state, metadata.zip]
+        .filter((l: string) => !!l && String(l).trim().length > 0)
+        .join(', ');
+      if (addressLines.length > 0) parts.push(`Address: ${addressLines.join(', ')}`);
+      if (cityStateZip) parts.push(`Location: ${cityStateZip}`);
+      if (metadata.type === 'skipped') return 'Contact form skipped';
+      return parts.length > 0 ? parts.join('\n') : 'No answer provided';
+    }
+    
     // b18 is just Yes/No for demographics consent
     if (blockId === 'b18') {
       // The answer_text should contain Yes or No
@@ -188,6 +208,8 @@ export const getQuestionType = (questionId: string, answer: any): string => {
     'b14': 'ranking',
     'b15': 'multi-choice',
     'b16': 'single-choice',
+    'b16a-contact': 'contact-form',
+    'b16-contact-confirm': 'yes-no',
     'b17': 'scale',
     'b18': 'demographics',
     'b19': 'dynamic-message'

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { clerkAdminApi } from '../../services/clerkApi';
+import { IconArrowLeft } from './ui/icons';
 import { getQuestionTextFromId, formatComplexAnswer, getQuestionType } from '../../utils/questionTextMapping';
 
 interface ResponseData {
@@ -90,7 +91,8 @@ const ResponseDetail: React.FC = () => {
       <ErrorContainer>
         <ErrorText>Response not found</ErrorText>
         <BackButton onClick={() => navigate('/admin/responses')}>
-          ← Back to Responses
+          <IconWrap><IconArrowLeft /></IconWrap>
+          Back to Responses
         </BackButton>
       </ErrorContainer>
     );
@@ -193,7 +195,7 @@ const LoadingSpinner = styled.div`
   width: 48px;
   height: 48px;
   border: 3px solid ${({ theme }) => theme.colors.border};
-  border-top-color: #4A90E2;
+  border-top-color: ${({ theme }) => theme.colors.primary};
   border-radius: 50%;
   animation: spin 1s linear infinite;
   
@@ -205,7 +207,6 @@ const LoadingSpinner = styled.div`
 const LoadingText = styled.p`
   margin-top: ${({ theme }) => theme.spacing.md};
   color: ${({ theme }) => theme.colors.text.secondary};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const ErrorContainer = styled.div`
@@ -215,7 +216,6 @@ const ErrorContainer = styled.div`
 
 const ErrorText = styled.h2`
   color: ${({ theme }) => theme.colors.text.primary};
-  font-family: 'Nunito', sans-serif;
   margin-bottom: ${({ theme }) => theme.spacing.lg};
 `;
 
@@ -235,14 +235,20 @@ const BackButton = styled.button`
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   color: ${({ theme }) => theme.colors.text.secondary};
-  font-family: 'Nunito', sans-serif;
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
   
   &:hover {
-    border-color: #4A90E2;
-    color: #4A90E2;
+    border-color: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.primary};
   }
+`;
+
+const IconWrap = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  svg { width: 18px; height: 18px; }
 `;
 
 const HeaderInfo = styled.div`
@@ -253,14 +259,12 @@ const Title = styled.h1`
   color: ${({ theme }) => theme.colors.text.primary};
   font-size: ${({ theme }) => theme.fontSizes['2xl']};
   margin: 0 0 ${({ theme }) => theme.spacing.xs} 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const RespondentName = styled.p`
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: ${({ theme }) => theme.fontSizes.lg};
   margin: 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const InfoSection = styled.div`
@@ -271,7 +275,7 @@ const InfoSection = styled.div`
 `;
 
 const InfoCard = styled.div`
-  background: ${({ theme }) => theme.colors.background};
+  background: ${({ theme }) => theme.colors.surface};
   padding: ${({ theme }) => theme.spacing.lg};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   box-shadow: ${({ theme }) => theme.shadows.sm};
@@ -281,14 +285,12 @@ const InfoLabel = styled.div`
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.text.secondary};
   margin-bottom: ${({ theme }) => theme.spacing.xs};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const InfoValue = styled.div`
   font-size: ${({ theme }) => theme.fontSizes.base};
   color: ${({ theme }) => theme.colors.text.primary};
   font-weight: ${({ theme }) => theme.fontWeights.medium};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const StatusBadge = styled.span<{ $completed: boolean }>`
@@ -306,16 +308,14 @@ const AnswersSection = styled.section``;
 
 const SectionTitle = styled.h2`
   color: ${({ theme }) => theme.colors.text.primary};
-  font-size: ${({ theme }) => theme.fontSizes.xl};
+  font-size: ${({ theme }) => theme.fontSizes.lg};
   margin: 0 0 ${({ theme }) => theme.spacing.lg} 0;
-  font-family: 'Nunito', sans-serif;
 `;
 
 const EmptyAnswers = styled.p`
   text-align: center;
   color: ${({ theme }) => theme.colors.text.secondary};
   padding: ${({ theme }) => theme.spacing['2xl']};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const AnswersList = styled.div`
@@ -325,7 +325,7 @@ const AnswersList = styled.div`
 `;
 
 const AnswerCard = styled.div`
-  background: ${({ theme }) => theme.colors.background};
+  background: ${({ theme }) => theme.colors.surface};
   padding: ${({ theme }) => theme.spacing.xl};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   box-shadow: ${({ theme }) => theme.shadows.sm};
@@ -349,11 +349,10 @@ const QuestionNumber = styled.span`
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: #4A90E2;
+  background: ${({ theme }) => theme.colors.primary};
   color: white;
   border-radius: ${({ theme }) => theme.borderRadius.full};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const QuestionType = styled.span`
@@ -362,7 +361,6 @@ const QuestionType = styled.span`
   gap: ${({ theme }) => theme.spacing.sm};
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: ${({ theme }) => theme.fontSizes.sm};
-  font-family: 'Nunito', sans-serif;
   text-transform: capitalize;
 `;
 
@@ -371,11 +369,11 @@ const QuestionText = styled.div`
   font-size: ${({ theme }) => theme.fontSizes.base};
   font-weight: ${({ theme }) => theme.fontWeights.medium};
   margin-bottom: ${({ theme }) => theme.spacing.md};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const AnswerContent = styled.div`
-  background: rgba(74, 144, 226, 0.05);
+  /* Neutral light tint to match Nesolagus */
+  background: #F7FAFC;
   padding: ${({ theme }) => theme.spacing.lg};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   margin-bottom: ${({ theme }) => theme.spacing.md};
@@ -383,7 +381,6 @@ const AnswerContent = styled.div`
 
 const AnswerText = styled.p`
   color: ${({ theme }) => theme.colors.text.primary};
-  font-family: 'Nunito', sans-serif;
   white-space: pre-wrap;
   margin: 0;
 `;
@@ -393,9 +390,8 @@ const VideoLink = styled.a`
   display: inline-flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.sm};
-  color: #4A90E2;
+  color: ${({ theme }) => theme.colors.primary};
   text-decoration: none;
-  font-family: 'Nunito', sans-serif;
   font-weight: ${({ theme }) => theme.fontWeights.medium};
   
   &:hover {
@@ -406,7 +402,6 @@ const VideoLink = styled.a`
 const AnswerTime = styled.div`
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.text.secondary};
-  font-family: 'Nunito', sans-serif;
 `;
 
 const UrlText = styled.p`
