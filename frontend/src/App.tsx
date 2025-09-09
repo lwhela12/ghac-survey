@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { ThemeProvider } from 'styled-components';
 import { ClerkProvider } from '@clerk/clerk-react';
@@ -14,18 +14,32 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
+// Bridge Clerk navigation to React Router to avoid full page reloads during auth flows
+const ClerkWithRouter: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const navigate = useNavigate();
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      routerPush={(to) => navigate(to)}
+      routerReplace={(to) => navigate(to, { replace: true })}
+    >
+      {children}
+    </ClerkProvider>
+  );
+};
+
 function App() {
   return (
     <ErrorBoundary>
       <Provider store={store}>
-        <ClerkProvider publishableKey={clerkPubKey}>
-          <ThemeProvider theme={theme}>
-            <GlobalStyle />
-            <Router>
+        <Router>
+          <ClerkWithRouter>
+            <ThemeProvider theme={theme}>
+              <GlobalStyle />
               <Routes>
                 <Route path="/" element={<SurveyPage />} />
-                <Route path="/admin/sign-in" element={<ClerkSignIn />} />
-                <Route path="/admin/sign-up" element={<ClerkSignUp />} />
+                <Route path="/admin/sign-in/*" element={<ClerkSignIn />} />
+                <Route path="/admin/sign-up/*" element={<ClerkSignUp />} />
                 <Route
                   path="/admin/*"
                   element={
@@ -35,9 +49,9 @@ function App() {
                   }
                 />
               </Routes>
-            </Router>
-          </ThemeProvider>
-        </ClerkProvider>
+            </ThemeProvider>
+          </ClerkWithRouter>
+        </Router>
       </Provider>
     </ErrorBoundary>
   );

@@ -12,6 +12,7 @@ const ClerkSignIn: React.FC = () => {
         <SignIn 
           path="/admin/sign-in"
           routing="path"
+          afterSignInUrl="/admin"
           signUpUrl="/admin/sign-up"
           fallbackRedirectUrl="/admin"
           appearance={{
